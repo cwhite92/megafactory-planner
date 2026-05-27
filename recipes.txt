@@ -1,0 +1,296 @@
+# Satisfactory Recipes — 293 machine recipes
+# Format: [Alt] Recipe Name (Machine): inputs -> outputs  (all rates in items/min)
+
+AI Expansion Server (Quantum Encoder): Magnetic Field Generator 4/min + Temporal Processor 4/min + Quantum Oscillator 4/min + Excited Photonic Matter 100/min -> AI Expansion Server 4/min + Dark Matter Residue 100/min
+AI Limiter (Assembler): Copper Sheet 25/min + Quickwire 100/min -> AI Limiter 5/min
+Adaptive Control Unit (Manufacturer): Automated Wiring 5/min + Circuit Board 5/min + Heavy Modular Frame 1/min + Computer 2/min -> Adaptive Control Unit 1/min
+Alclad Aluminum Sheet (Assembler): Aluminum Ingot 30/min + Copper Ingot 10/min -> Alclad Aluminum Sheet 30/min
+Alien DNA Capsule (Constructor): Alien Protein 10/min -> Alien DNA Capsule 10/min
+Alien Power Matrix (Quantum Encoder): SAM Fluctuator 12.5/min + Power Shard 7.5/min + Quantum Oscillator 7.5/min + Excited Photonic Matter 60/min -> Alien Power Fuel 2.5/min + Dark Matter Residue 60/min
+Alumina Solution (Refinery): Bauxite 120/min + Water 180/min -> Alumina Solution 120/min + Silica 50/min
+Aluminum Casing (Constructor): Aluminum Ingot 90/min -> Aluminum Casing 60/min
+Aluminum Ingot (Foundry): Aluminum Scrap 90/min + Silica 75/min -> Aluminum Ingot 60/min
+Aluminum Scrap (Refinery): Alumina Solution 240/min + Coal 120/min -> Aluminum Scrap 360/min + Water 120/min
+Assembly Director System (Assembler): Adaptive Control Unit 1.5/min + Supercomputer 0.75/min -> Assembly Director System 0.75/min
+Automated Wiring (Assembler): Stator 2.5/min + Cable 50/min -> Automated Wiring 2.5/min
+Ballistic Warp Drive (Manufacturer): Thermal Propulsion Rocket 1/min + Singularity Cell 5/min + Quantum Oscillator 2/min + Dark Matter Crystal 40/min -> Ballistic Warp Drive 1/min
+Battery (Blender): Sulfuric Acid 50/min + Alumina Solution 40/min + Aluminum Casing 20/min -> Battery 20/min + Water 30/min
+Bauxite (Caterium) (Converter): Reanimated SAM 10/min + Caterium Ore 150/min -> Bauxite 120/min
+Bauxite (Copper) (Converter): Reanimated SAM 10/min + Copper Ore 180/min -> Bauxite 120/min
+Biochemical Sculptor (Blender): Assembly Director System 0.5/min + Ficsite Trigon 40/min + Water 10/min -> Biochemical Sculptor 2/min
+Biocoal (Constructor): Biomass 37.5/min -> Coal 45/min
+Biomass (Alien Protein) (Constructor): Alien Protein 15/min -> Biomass 1500/min
+Biomass (Leaves) (Constructor): Leaves 120/min -> Biomass 60/min
+Biomass (Mycelia) (Constructor): Mycelia 15/min -> Biomass 150/min
+Biomass (Wood) (Constructor): Wood 60/min -> Biomass 300/min
+Black Powder (Assembler): Coal 15/min + Sulfur 15/min -> Black Powder 30/min
+Blue FICSMAS Ornament (Smelter): FICSMAS Gift 5/min -> Blue FICSMAS Ornament 10/min
+Cable (Constructor): Wire 60/min -> Cable 30/min
+Candy Cane (Constructor): FICSMAS Gift 15/min -> Candy Cane 5/min
+Caterium Ingot (Smelter): Caterium Ore 45/min -> Caterium Ingot 15/min
+Caterium Ore (Copper) (Converter): Reanimated SAM 10/min + Copper Ore 150/min -> Caterium Ore 120/min
+Caterium Ore (Quartz) (Converter): Reanimated SAM 10/min + Raw Quartz 120/min -> Caterium Ore 120/min
+Charcoal (Constructor): Wood 15/min -> Coal 150/min
+Circuit Board (Assembler): Copper Sheet 15/min + Plastic 30/min -> Circuit Board 7.5/min
+Cluster Nobelisk (Assembler): Nobelisk 7.5/min + Smokeless Powder 10/min -> Cluster Nobelisk 2.5/min
+Coal (Iron) (Converter): Reanimated SAM 10/min + Iron Ore 180/min -> Coal 120/min
+Coal (Limestone) (Converter): Reanimated SAM 10/min + Limestone 360/min -> Coal 120/min
+Compacted Coal (Assembler): Coal 25/min + Sulfur 25/min -> Compacted Coal 25/min
+Computer (Manufacturer): Circuit Board 10/min + Cable 20/min + Plastic 40/min -> Computer 2.5/min
+Concrete (Constructor): Limestone 45/min -> Concrete 15/min
+Cooling System (Blender): Heat Sink 12/min + Rubber 12/min + Water 30/min + Nitrogen Gas 150/min -> Cooling System 6/min
+Copper FICSMAS Ornament (Foundry): Red FICSMAS Ornament 10/min + Copper Ingot 10/min -> Copper FICSMAS Ornament 5/min
+Copper Ingot (Smelter): Copper Ore 30/min -> Copper Ingot 30/min
+Copper Ore (Quartz) (Converter): Reanimated SAM 10/min + Raw Quartz 100/min -> Copper Ore 120/min
+Copper Ore (Sulfur) (Converter): Reanimated SAM 10/min + Sulfur 120/min -> Copper Ore 120/min
+Copper Powder (Constructor): Copper Ingot 300/min -> Copper Powder 50/min
+Copper Sheet (Constructor): Copper Ingot 20/min -> Copper Sheet 10/min
+Crystal Oscillator (Manufacturer): Quartz Crystal 18/min + Cable 14/min + Reinforced Iron Plate 2.5/min -> Crystal Oscillator 1/min
+Dark Matter Crystal (Particle Accelerator): Diamonds 30/min + Dark Matter Residue 150/min -> Dark Matter Crystal 30/min
+Dark Matter Residue (Converter): Reanimated SAM 50/min -> Dark Matter Residue 100/min
+Diamonds (Particle Accelerator): Coal 600/min -> Diamonds 30/min
+Electromagnetic Control Rod (Assembler): Stator 6/min + AI Limiter 4/min -> Electromagnetic Control Rod 4/min
+Empty Canister (Constructor): Plastic 30/min -> Empty Canister 60/min
+Empty Fluid Tank (Constructor): Aluminum Ingot 60/min -> Empty Fluid Tank 60/min
+Encased Industrial Beam (Assembler): Steel Beam 18/min + Concrete 36/min -> Encased Industrial Beam 6/min
+Encased Plutonium Cell (Assembler): Plutonium Pellet 10/min + Concrete 20/min -> Encased Plutonium Cell 5/min
+Encased Uranium Cell (Blender): Uranium Ore 50/min + Concrete 15/min + Sulfuric Acid 40/min -> Encased Uranium Cell 25/min + Sulfuric Acid 10/min
+Excited Photonic Matter (Converter): (none) -> Excited Photonic Matter 200/min
+Explosive Rebar (Manufacturer): Iron Rebar 10/min + Smokeless Powder 10/min + Steel Pipe 10/min -> Explosive Rebar 5/min
+FICSMAS Actual Snow (Constructor): FICSMAS Gift 25/min -> FICSMAS Actual Snow 10/min
+FICSMAS Bow (Constructor): FICSMAS Gift 10/min -> FICSMAS Bow 5/min
+FICSMAS Ornament Bundle (Assembler): Copper FICSMAS Ornament 5/min + Iron FICSMAS Ornament 5/min -> FICSMAS Ornament Bundle 5/min
+FICSMAS Tree Branch (Constructor): FICSMAS Gift 10/min -> FICSMAS Tree Branch 10/min
+FICSMAS Wonder Star (Assembler): FICSMAS Wreath 5/min + Candy Cane 20/min -> FICSMAS Wonder Star 1/min
+FICSMAS Wreath (Assembler): FICSMAS Tree Branch 15/min + FICSMAS Ornament Bundle 6/min -> FICSMAS Wreath 2/min
+Fabric (Assembler): Mycelia 15/min + Biomass 75/min -> Polyester Fabric 15/min
+Fancy Fireworks (Assembler): FICSMAS Tree Branch 10/min + FICSMAS Bow 7.5/min -> Fancy Fireworks 2.5/min
+Ficsite Ingot (Aluminum) (Converter): Reanimated SAM 60/min + Aluminum Ingot 120/min -> Ficsite Ingot 30/min
+Ficsite Ingot (Caterium) (Converter): Reanimated SAM 45/min + Caterium Ingot 60/min -> Ficsite Ingot 15/min
+Ficsite Ingot (Iron) (Converter): Reanimated SAM 40/min + Iron Ingot 240/min -> Ficsite Ingot 10/min
+Ficsite Trigon (Constructor): Ficsite Ingot 10/min -> Ficsite Trigon 30/min
+Ficsonium (Particle Accelerator): Plutonium Waste 10/min + Singularity Cell 10/min + Dark Matter Residue 200/min -> Ficsonium 10/min
+Ficsonium Fuel Rod (Quantum Encoder): Ficsonium 5/min + Electromagnetic Control Rod 5/min + Ficsite Trigon 100/min + Excited Photonic Matter 50/min -> Ficsonium Fuel Rod 2.5/min + Dark Matter Residue 50/min
+Fuel (Refinery): Crude Oil 60/min -> Fuel 40/min + Polymer Resin 30/min
+Fused Modular Frame (Blender): Heavy Modular Frame 1.5/min + Aluminum Casing 75/min + Nitrogen Gas 37.5/min -> Fused Modular Frame 1.5/min
+Gas Filter (Manufacturer): Polyester Fabric 15/min + Coal 30/min + Iron Plate 15/min -> Gas Filter 7.5/min
+Gas Nobelisk (Assembler): Nobelisk 5/min + Biomass 50/min -> Gas Nobelisk 5/min
+Hatcher Protein (Constructor): Hatcher Remains 20/min -> Alien Protein 20/min
+Heat Sink (Assembler): Alclad Aluminum Sheet 37.5/min + Copper Sheet 22.5/min -> Heat Sink 7.5/min
+Heavy Modular Frame (Manufacturer): Modular Frame 10/min + Steel Pipe 40/min + Encased Industrial Beam 10/min + Screws 240/min -> Heavy Modular Frame 2/min
+High-Speed Connector (Manufacturer): Quickwire 210/min + Cable 37.5/min + Circuit Board 3.75/min -> High-Speed Connector 3.75/min
+Hog Protein (Constructor): Hog Remains 20/min -> Alien Protein 20/min
+Homing Rifle Ammo (Assembler): Rifle Ammo 50/min + High-Speed Connector 2.5/min -> Homing Rifle Ammo 25/min
+Iodine-Infused Filter (Manufacturer): Gas Filter 3.75/min + Quickwire 30/min + Aluminum Casing 3.75/min -> Iodine-Infused Filter 3.75/min
+Ionized Fuel (Refinery): Rocket Fuel 40/min + Power Shard 2.5/min -> Ionized Fuel 40/min + Compacted Coal 5/min
+Iron FICSMAS Ornament (Foundry): Blue FICSMAS Ornament 15/min + Iron Ingot 15/min -> Iron FICSMAS Ornament 5/min
+Iron Ingot (Smelter): Iron Ore 30/min -> Iron Ingot 30/min
+Iron Ore (Limestone) (Converter): Reanimated SAM 10/min + Limestone 240/min -> Iron Ore 120/min
+Iron Plate (Constructor): Iron Ingot 30/min -> Iron Plate 20/min
+Iron Rebar (Constructor): Iron Rod 15/min -> Iron Rebar 15/min
+Iron Rod (Constructor): Iron Ingot 15/min -> Iron Rod 15/min
+Limestone (Sulfur) (Converter): Reanimated SAM 10/min + Sulfur 20/min -> Limestone 120/min
+Liquid Biofuel (Refinery): Solid Biofuel 90/min + Water 45/min -> Liquid Biofuel 60/min
+Magnetic Field Generator (Assembler): Versatile Framework 2.5/min + Electromagnetic Control Rod 1/min -> Magnetic Field Generator 1/min
+Modular Engine (Manufacturer): Motor 2/min + Rubber 15/min + Smart Plating 2/min -> Modular Engine 1/min
+Modular Frame (Assembler): Reinforced Iron Plate 3/min + Iron Rod 12/min -> Modular Frame 2/min
+Motor (Assembler): Rotor 10/min + Stator 10/min -> Motor 5/min
+Neural-Quantum Processor (Quantum Encoder): Time Crystal 15/min + Supercomputer 3/min + Ficsite Trigon 45/min + Excited Photonic Matter 75/min -> Temporal Processor 3/min + Dark Matter Residue 75/min
+Nitric Acid (Blender): Nitrogen Gas 120/min + Water 30/min + Iron Plate 10/min -> Nitric Acid 30/min
+Nitrogen Gas (Bauxite) (Converter): Reanimated SAM 10/min + Bauxite 100/min -> Nitrogen Gas 120/min
+Nitrogen Gas (Caterium) (Converter): Reanimated SAM 10/min + Caterium Ore 120/min -> Nitrogen Gas 120/min
+Nobelisk (Assembler): Black Powder 20/min + Steel Pipe 20/min -> Nobelisk 10/min
+Non-Fissile Uranium (Blender): Uranium Waste 37.5/min + Silica 25/min + Nitric Acid 15/min + Sulfuric Acid 15/min -> Non-Fissile Uranium 50/min + Water 15/min
+Nuclear Pasta (Particle Accelerator): Copper Powder 100/min + Pressure Conversion Cube 0.5/min -> Nuclear Pasta 0.5/min
+Nuke Nobelisk (Manufacturer): Nobelisk 2.5/min + Encased Uranium Cell 10/min + Smokeless Powder 5/min + AI Limiter 3/min -> Nuke Nobelisk 0.5/min
+Packaged Alumina Solution (Packager): Alumina Solution 120/min + Empty Canister 120/min -> Packaged Alumina Solution 120/min
+Packaged Fuel (Packager): Fuel 40/min + Empty Canister 40/min -> Packaged Fuel 40/min
+Packaged Heavy Oil Residue (Packager): Heavy Oil Residue 30/min + Empty Canister 30/min -> Packaged Heavy Oil Residue 30/min
+Packaged Ionized Fuel (Packager): Ionized Fuel 80/min + Empty Fluid Tank 40/min -> Packaged Ionized Fuel 40/min
+Packaged Liquid Biofuel (Packager): Liquid Biofuel 40/min + Empty Canister 40/min -> Packaged Liquid Biofuel 40/min
+Packaged Nitric Acid (Packager): Nitric Acid 30/min + Empty Fluid Tank 30/min -> Packaged Nitric Acid 30/min
+Packaged Nitrogen Gas (Packager): Nitrogen Gas 240/min + Empty Fluid Tank 60/min -> Packaged Nitrogen Gas 60/min
+Packaged Oil (Packager): Crude Oil 30/min + Empty Canister 30/min -> Packaged Oil 30/min
+Packaged Rocket Fuel (Packager): Rocket Fuel 120/min + Empty Fluid Tank 60/min -> Packaged Rocket Fuel 60/min
+Packaged Sulfuric Acid (Packager): Sulfuric Acid 40/min + Empty Canister 40/min -> Packaged Sulfuric Acid 40/min
+Packaged Turbofuel (Packager): Turbofuel 20/min + Empty Canister 20/min -> Packaged Turbofuel 20/min
+Packaged Water (Packager): Water 60/min + Empty Canister 60/min -> Packaged Water 60/min
+Petroleum Coke (Refinery): Heavy Oil Residue 40/min -> Petroleum Coke 120/min
+Plastic (Refinery): Crude Oil 30/min -> Plastic 20/min + Heavy Oil Residue 10/min
+Plutonium Fuel Rod (Manufacturer): Encased Plutonium Cell 7.5/min + Steel Beam 4.5/min + Electromagnetic Control Rod 1.5/min + Heat Sink 2.5/min -> Plutonium Fuel Rod 0.25/min
+Plutonium Fuel Rod (burning) (Nuclear Power Plant): Plutonium Fuel Rod 0.1/min + Water 240/min -> Plutonium Waste 1/min
+Plutonium Pellet (Particle Accelerator): Non-Fissile Uranium 100/min + Uranium Waste 25/min -> Plutonium Pellet 30/min
+Polyester Fabric (Refinery): Polymer Resin 30/min + Water 30/min -> Polyester Fabric 30/min
+Power Shard (1) (Constructor): Blue Power Slug 7.5/min -> Power Shard 7.5/min
+Power Shard (2) (Constructor): Yellow Power Slug 5/min -> Power Shard 10/min
+Power Shard (5) (Constructor): Purple Power Slug 2.5/min -> Power Shard 12.5/min
+Pressure Conversion Cube (Assembler): Fused Modular Frame 1/min + Radio Control Unit 2/min -> Pressure Conversion Cube 1/min
+Pulse Nobelisk (Assembler): Nobelisk 5/min + Crystal Oscillator 1/min -> Pulse Nobelisk 5/min
+Quartz Crystal (Constructor): Raw Quartz 37.5/min -> Quartz Crystal 22.5/min
+Quickwire (Constructor): Caterium Ingot 12/min -> Quickwire 60/min
+Radio Control Unit (Manufacturer): Aluminum Casing 40/min + Crystal Oscillator 1.25/min + Computer 2.5/min -> Radio Control Unit 2.5/min
+Raw Quartz (Bauxite) (Converter): Reanimated SAM 10/min + Bauxite 100/min -> Raw Quartz 120/min
+Raw Quartz (Coal) (Converter): Reanimated SAM 10/min + Coal 240/min -> Raw Quartz 120/min
+Reanimated SAM (Constructor): SAM Ore 120/min -> Reanimated SAM 30/min
+Red FICSMAS Ornament (Smelter): FICSMAS Gift 5/min -> Red FICSMAS Ornament 5/min
+Reinforced Iron Plate (Assembler): Iron Plate 30/min + Screws 60/min -> Reinforced Iron Plate 5/min
+Residual Fuel (Refinery): Heavy Oil Residue 60/min -> Fuel 40/min
+Residual Plastic (Refinery): Polymer Resin 60/min + Water 20/min -> Plastic 20/min
+Residual Rubber (Refinery): Polymer Resin 40/min + Water 40/min -> Rubber 20/min
+Rifle Ammo (Assembler): Copper Sheet 15/min + Smokeless Powder 10/min -> Rifle Ammo 75/min
+Rocket Fuel (Blender): Turbofuel 60/min + Nitric Acid 10/min -> Rocket Fuel 100/min + Compacted Coal 10/min
+Rotor (Assembler): Iron Rod 20/min + Screws 100/min -> Rotor 4/min
+Rubber (Refinery): Crude Oil 30/min -> Rubber 20/min + Heavy Oil Residue 20/min
+SAM Fluctuator (Manufacturer): Reanimated SAM 60/min + Wire 50/min + Steel Pipe 30/min -> SAM Fluctuator 10/min
+Screws (Constructor): Iron Rod 10/min -> Screws 40/min
+Shatter Rebar (Assembler): Iron Rebar 10/min + Quartz Crystal 15/min -> Shatter Rebar 5/min
+Silica (Constructor): Raw Quartz 22.5/min -> Silica 37.5/min
+Singularity Cell (Manufacturer): Nuclear Pasta 1/min + Dark Matter Crystal 20/min + Iron Plate 100/min + Concrete 200/min -> Singularity Cell 10/min
+Smart Plating (Assembler): Reinforced Iron Plate 2/min + Rotor 2/min -> Smart Plating 2/min
+Smokeless Powder (Refinery): Black Powder 20/min + Heavy Oil Residue 10/min -> Smokeless Powder 20/min
+Snowball (Constructor): FICSMAS Actual Snow 15/min -> Snowball 5/min
+Solid Biofuel (Constructor): Biomass 120/min -> Solid Biofuel 60/min
+Sparkly Fireworks (Assembler): FICSMAS Tree Branch 7.5/min + FICSMAS Actual Snow 5/min -> Sparkly Fireworks 2.5/min
+Spitter Protein (Constructor): Plasma Spitter Remains 20/min -> Alien Protein 20/min
+Stator (Assembler): Steel Pipe 15/min + Wire 40/min -> Stator 5/min
+Steel Beam (Constructor): Steel Ingot 60/min -> Steel Beam 15/min
+Steel Ingot (Foundry): Iron Ore 45/min + Coal 45/min -> Steel Ingot 45/min
+Steel Pipe (Constructor): Steel Ingot 30/min -> Steel Pipe 20/min
+Stinger Protein (Constructor): Stinger Remains 20/min -> Alien Protein 20/min
+Stun Rebar (Assembler): Iron Rebar 10/min + Quickwire 50/min -> Stun Rebar 10/min
+Sulfur (Coal) (Converter): Reanimated SAM 10/min + Coal 200/min -> Sulfur 120/min
+Sulfur (Iron) (Converter): Reanimated SAM 10/min + Iron Ore 300/min -> Sulfur 120/min
+Sulfuric Acid (Refinery): Sulfur 50/min + Water 50/min -> Sulfuric Acid 50/min
+Supercomputer (Manufacturer): Computer 7.5/min + AI Limiter 3.75/min + High-Speed Connector 5.625/min + Plastic 52.5/min -> Supercomputer 1.875/min
+Superposition Oscillator (Quantum Encoder): Dark Matter Crystal 30/min + Crystal Oscillator 5/min + Alclad Aluminum Sheet 45/min + Excited Photonic Matter 125/min -> Quantum Oscillator 5/min + Dark Matter Residue 125/min
+Sweet Fireworks (Assembler): FICSMAS Tree Branch 15/min + Candy Cane 7.5/min -> Sweet Fireworks 2.5/min
+Synthetic Power Shard (Quantum Encoder): Time Crystal 10/min + Dark Matter Crystal 10/min + Quartz Crystal 60/min + Excited Photonic Matter 60/min -> Power Shard 5/min + Dark Matter Residue 60/min
+Thermal Propulsion Rocket (Manufacturer): Modular Engine 2.5/min + Turbo Motor 1/min + Cooling System 3/min + Fused Modular Frame 1/min -> Thermal Propulsion Rocket 1/min
+Time Crystal (Converter): Diamonds 12/min -> Time Crystal 6/min
+Turbo Motor (Manufacturer): Cooling System 7.5/min + Radio Control Unit 3.75/min + Motor 7.5/min + Rubber 45/min -> Turbo Motor 1.875/min
+Turbo Rifle Ammo (Blender): Rifle Ammo 125/min + Aluminum Casing 15/min + Turbofuel 15/min -> Turbo Rifle Ammo 250/min
+Turbo Rifle Ammo (Manufacturer): Rifle Ammo 125/min + Aluminum Casing 15/min + Packaged Turbofuel 15/min -> Turbo Rifle Ammo 250/min
+Turbofuel (Refinery): Fuel 22.5/min + Compacted Coal 15/min -> Turbofuel 18.75/min
+Unpackage Alumina Solution (Packager): Packaged Alumina Solution 120/min -> Alumina Solution 120/min + Empty Canister 120/min
+Unpackage Fuel (Packager): Packaged Fuel 60/min -> Fuel 60/min + Empty Canister 60/min
+Unpackage Heavy Oil Residue (Packager): Packaged Heavy Oil Residue 20/min -> Heavy Oil Residue 20/min + Empty Canister 20/min
+Unpackage Ionized Fuel (Packager): Packaged Ionized Fuel 40/min -> Ionized Fuel 80/min + Empty Fluid Tank 40/min
+Unpackage Liquid Biofuel (Packager): Packaged Liquid Biofuel 60/min -> Liquid Biofuel 60/min + Empty Canister 60/min
+Unpackage Nitric Acid (Packager): Packaged Nitric Acid 20/min -> Nitric Acid 20/min + Empty Fluid Tank 20/min
+Unpackage Nitrogen Gas (Packager): Packaged Nitrogen Gas 60/min -> Nitrogen Gas 240/min + Empty Fluid Tank 60/min
+Unpackage Oil (Packager): Packaged Oil 60/min -> Crude Oil 60/min + Empty Canister 60/min
+Unpackage Rocket Fuel (Packager): Packaged Rocket Fuel 60/min -> Rocket Fuel 120/min + Empty Fluid Tank 60/min
+Unpackage Sulfuric Acid (Packager): Packaged Sulfuric Acid 60/min -> Sulfuric Acid 60/min + Empty Canister 60/min
+Unpackage Turbofuel (Packager): Packaged Turbofuel 20/min -> Turbofuel 20/min + Empty Canister 20/min
+Unpackage Water (Packager): Packaged Water 120/min -> Water 120/min + Empty Canister 120/min
+Uranium Fuel Rod (Manufacturer): Encased Uranium Cell 20/min + Encased Industrial Beam 1.2/min + Electromagnetic Control Rod 2/min -> Uranium Fuel Rod 0.4/min
+Uranium Fuel Rod (burning) (Nuclear Power Plant): Uranium Fuel Rod 0.2/min + Water 240/min -> Uranium Waste 10/min
+Uranium Ore (Bauxite) (Converter): Reanimated SAM 10/min + Bauxite 480/min -> Uranium Ore 120/min
+Versatile Framework (Assembler): Modular Frame 2.5/min + Steel Beam 30/min -> Versatile Framework 5/min
+Wire (Constructor): Copper Ingot 15/min -> Wire 30/min
+[Alt] Adhered Iron Plate (Assembler): Iron Plate 11.25/min + Rubber 3.75/min -> Reinforced Iron Plate 3.75/min
+[Alt] Alclad Casing (Assembler): Aluminum Ingot 150/min + Copper Ingot 75/min -> Aluminum Casing 112.5/min
+[Alt] Aluminum Beam (Constructor): Aluminum Ingot 22.5/min -> Steel Beam 22.5/min
+[Alt] Aluminum Rod (Constructor): Aluminum Ingot 7.5/min -> Iron Rod 52.5/min
+[Alt] Automated Miner (Assembler): Steel Pipe 4/min + Iron Plate 4/min -> Portable Miner 1/min
+[Alt] Automated Speed Wiring (Manufacturer): Stator 3.75/min + Wire 75/min + High-Speed Connector 1.875/min -> Automated Wiring 7.5/min
+[Alt] Basic Iron Ingot (Foundry): Iron Ore 25/min + Limestone 40/min -> Iron Ingot 50/min
+[Alt] Bolted Frame (Assembler): Reinforced Iron Plate 7.5/min + Screws 140/min -> Modular Frame 5/min
+[Alt] Bolted Iron Plate (Assembler): Iron Plate 90/min + Screws 250/min -> Reinforced Iron Plate 15/min
+[Alt] Cast Screws (Constructor): Iron Ingot 12.5/min -> Screws 50/min
+[Alt] Caterium Circuit Board (Assembler): Plastic 12.5/min + Quickwire 37.5/min -> Circuit Board 8.75/min
+[Alt] Caterium Computer (Manufacturer): Circuit Board 15/min + Quickwire 52.5/min + Rubber 22.5/min -> Computer 3.75/min
+[Alt] Caterium Wire (Constructor): Caterium Ingot 15/min -> Wire 120/min
+[Alt] Cheap Silica (Assembler): Raw Quartz 22.5/min + Limestone 37.5/min -> Silica 52.5/min
+[Alt] Classic Battery (Manufacturer): Sulfur 45/min + Alclad Aluminum Sheet 52.5/min + Plastic 60/min + Wire 90/min -> Battery 30/min
+[Alt] Cloudy Diamonds (Particle Accelerator): Coal 240/min + Limestone 480/min -> Diamonds 20/min
+[Alt] Coated Cable (Refinery): Wire 37.5/min + Heavy Oil Residue 15/min -> Cable 67.5/min
+[Alt] Coated Iron Canister (Assembler): Iron Plate 30/min + Copper Sheet 15/min -> Empty Canister 60/min
+[Alt] Coated Iron Plate (Assembler): Iron Ingot 37.5/min + Plastic 7.5/min -> Iron Plate 75/min
+[Alt] Coke Steel Ingot (Foundry): Iron Ore 75/min + Petroleum Coke 75/min -> Steel Ingot 100/min
+[Alt] Compacted Steel Ingot (Foundry): Iron Ore 5/min + Compacted Coal 2.5/min -> Steel Ingot 10/min
+[Alt] Cooling Device (Blender): Heat Sink 10/min + Motor 2.5/min + Nitrogen Gas 60/min -> Cooling System 5/min
+[Alt] Copper Alloy Ingot (Foundry): Copper Ore 50/min + Iron Ore 50/min -> Copper Ingot 100/min
+[Alt] Copper Rotor (Assembler): Copper Sheet 22.5/min + Screws 195/min -> Rotor 11.25/min
+[Alt] Crystal Computer (Assembler): Circuit Board 5/min + Crystal Oscillator 1.6667/min -> Computer 3.3333/min
+[Alt] Dark Matter Crystallization (Particle Accelerator): Dark Matter Residue 200/min -> Dark Matter Crystal 20/min
+[Alt] Dark Matter Trap (Particle Accelerator): Time Crystal 30/min + Dark Matter Residue 150/min -> Dark Matter Crystal 60/min
+[Alt] Dark-Ion Fuel (Converter): Packaged Rocket Fuel 240/min + Dark Matter Crystal 80/min -> Ionized Fuel 200/min + Compacted Coal 40/min
+[Alt] Diluted Fuel (Blender): Heavy Oil Residue 50/min + Water 100/min -> Fuel 100/min
+[Alt] Diluted Packaged Fuel (Refinery): Heavy Oil Residue 30/min + Packaged Water 60/min -> Packaged Fuel 60/min
+[Alt] Distilled Silica (Blender): Dissolved Silica 120/min + Limestone 50/min + Water 100/min -> Silica 270/min + Water 80/min
+[Alt] Electric Motor (Assembler): Electromagnetic Control Rod 3.75/min + Rotor 7.5/min -> Motor 7.5/min
+[Alt] Electrode Aluminum Scrap (Refinery): Alumina Solution 180/min + Petroleum Coke 60/min -> Aluminum Scrap 300/min + Water 105/min
+[Alt] Electrode Circuit Board (Assembler): Rubber 20/min + Petroleum Coke 40/min -> Circuit Board 5/min
+[Alt] Electromagnetic Connection Rod (Assembler): Stator 8/min + High-Speed Connector 4/min -> Electromagnetic Control Rod 8/min
+[Alt] Encased Industrial Pipe (Assembler): Steel Pipe 24/min + Concrete 20/min -> Encased Industrial Beam 4/min
+[Alt] Fertile Uranium (Blender): Uranium Ore 25/min + Uranium Waste 25/min + Nitric Acid 15/min + Sulfuric Acid 25/min -> Non-Fissile Uranium 100/min + Water 40/min
+[Alt] Fine Black Powder (Assembler): Sulfur 7.5/min + Compacted Coal 15/min -> Black Powder 45/min
+[Alt] Fine Concrete (Assembler): Silica 15/min + Limestone 60/min -> Concrete 50/min
+[Alt] Flexible Framework (Manufacturer): Modular Frame 3.75/min + Steel Beam 22.5/min + Rubber 30/min -> Versatile Framework 7.5/min
+[Alt] Fused Quartz Crystal (Foundry): Raw Quartz 75/min + Coal 36/min -> Quartz Crystal 54/min
+[Alt] Fused Quickwire (Assembler): Caterium Ingot 7.5/min + Copper Ingot 37.5/min -> Quickwire 90/min
+[Alt] Fused Wire (Assembler): Copper Ingot 12/min + Caterium Ingot 3/min -> Wire 90/min
+[Alt] Heat Exchanger (Assembler): Aluminum Casing 30/min + Rubber 30/min -> Heat Sink 10/min
+[Alt] Heat-Fused Frame (Blender): Heavy Modular Frame 3/min + Aluminum Ingot 150/min + Nitric Acid 24/min + Fuel 30/min -> Fused Modular Frame 3/min
+[Alt] Heavy Encased Frame (Manufacturer): Modular Frame 7.5/min + Encased Industrial Beam 9.375/min + Steel Pipe 33.75/min + Concrete 20.625/min -> Heavy Modular Frame 2.8125/min
+[Alt] Heavy Flexible Frame (Manufacturer): Modular Frame 18.75/min + Encased Industrial Beam 11.25/min + Rubber 75/min + Screws 390/min -> Heavy Modular Frame 3.75/min
+[Alt] Heavy Oil Residue (Refinery): Crude Oil 30/min -> Heavy Oil Residue 40/min + Polymer Resin 20/min
+[Alt] Infused Uranium Cell (Manufacturer): Uranium Ore 25/min + Silica 15/min + Sulfur 25/min + Quickwire 75/min -> Encased Uranium Cell 20/min
+[Alt] Instant Plutonium Cell (Particle Accelerator): Non-Fissile Uranium 75/min + Aluminum Casing 10/min -> Encased Plutonium Cell 10/min
+[Alt] Instant Scrap (Blender): Bauxite 150/min + Coal 100/min + Sulfuric Acid 50/min + Water 60/min -> Aluminum Scrap 300/min + Water 50/min
+[Alt] Insulated Cable (Assembler): Wire 45/min + Rubber 30/min -> Cable 100/min
+[Alt] Insulated Crystal Oscillator (Manufacturer): Quartz Crystal 18.75/min + Rubber 13.125/min + AI Limiter 1.875/min -> Crystal Oscillator 1.875/min
+[Alt] Iron Alloy Ingot (Foundry): Iron Ore 40/min + Copper Ore 10/min -> Iron Ingot 75/min
+[Alt] Iron Pipe (Constructor): Iron Ingot 100/min -> Steel Pipe 25/min
+[Alt] Iron Wire (Constructor): Iron Ingot 12.5/min -> Wire 22.5/min
+[Alt] Leached Caterium Ingot (Refinery): Caterium Ore 54/min + Sulfuric Acid 30/min -> Caterium Ingot 36/min
+[Alt] Leached Copper Ingot (Refinery): Copper Ore 45/min + Sulfuric Acid 25/min -> Copper Ingot 110/min
+[Alt] Leached Iron Ingot (Refinery): Iron Ore 50/min + Sulfuric Acid 10/min -> Iron Ingot 100/min
+[Alt] Molded Beam (Foundry): Steel Ingot 120/min + Concrete 80/min -> Steel Beam 45/min
+[Alt] Molded Steel Pipe (Foundry): Steel Ingot 50/min + Concrete 30/min -> Steel Pipe 50/min
+[Alt] Nitro Rocket Fuel (Blender): Fuel 100/min + Nitrogen Gas 75/min + Sulfur 100/min + Coal 50/min -> Rocket Fuel 150/min + Compacted Coal 25/min
+[Alt] OC Supercomputer (Assembler): Radio Control Unit 6/min + Cooling System 6/min -> Supercomputer 3/min
+[Alt] Oil-Based Diamonds (Particle Accelerator): Crude Oil 200/min -> Diamonds 40/min
+[Alt] Petroleum Diamonds (Particle Accelerator): Petroleum Coke 720/min -> Diamonds 30/min
+[Alt] Pink Diamonds (Converter): Coal 120/min + Quartz Crystal 45/min -> Diamonds 15/min
+[Alt] Plastic AI Limiter (Assembler): Quickwire 120/min + Plastic 28/min -> AI Limiter 8/min
+[Alt] Plastic Smart Plating (Manufacturer): Reinforced Iron Plate 2.5/min + Rotor 2.5/min + Plastic 7.5/min -> Smart Plating 5/min
+[Alt] Plutonium Fuel Unit (Assembler): Encased Plutonium Cell 10/min + Pressure Conversion Cube 0.5/min -> Plutonium Fuel Rod 0.5/min
+[Alt] Polymer Resin (Refinery): Crude Oil 60/min -> Polymer Resin 130/min + Heavy Oil Residue 20/min
+[Alt] Pure Aluminum Ingot (Smelter): Aluminum Scrap 60/min -> Aluminum Ingot 30/min
+[Alt] Pure Caterium Ingot (Refinery): Caterium Ore 24/min + Water 24/min -> Caterium Ingot 12/min
+[Alt] Pure Copper Ingot (Refinery): Copper Ore 15/min + Water 10/min -> Copper Ingot 37.5/min
+[Alt] Pure Iron Ingot (Refinery): Iron Ore 35/min + Water 20/min -> Iron Ingot 65/min
+[Alt] Pure Quartz Crystal (Refinery): Raw Quartz 67.5/min + Water 37.5/min -> Quartz Crystal 52.5/min
+[Alt] Quartz Purification (Refinery): Raw Quartz 120/min + Nitric Acid 10/min -> Quartz Crystal 75/min + Dissolved Silica 60/min
+[Alt] Quickwire Cable (Assembler): Quickwire 7.5/min + Rubber 5/min -> Cable 27.5/min
+[Alt] Quickwire Stator (Assembler): Steel Pipe 16/min + Quickwire 60/min -> Stator 8/min
+[Alt] Radio Connection Unit (Manufacturer): Heat Sink 15/min + High-Speed Connector 7.5/min + Quartz Crystal 45/min -> Radio Control Unit 3.75/min
+[Alt] Radio Control System (Manufacturer): Crystal Oscillator 1.5/min + Circuit Board 15/min + Aluminum Casing 90/min + Rubber 45/min -> Radio Control Unit 4.5/min
+[Alt] Recycled Plastic (Refinery): Rubber 30/min + Fuel 30/min -> Plastic 60/min
+[Alt] Recycled Rubber (Refinery): Plastic 30/min + Fuel 30/min -> Rubber 60/min
+[Alt] Rigor Motor (Manufacturer): Rotor 3.75/min + Stator 3.75/min + Crystal Oscillator 1.25/min -> Motor 7.5/min
+[Alt] Rubber Concrete (Assembler): Limestone 100/min + Rubber 20/min -> Concrete 90/min
+[Alt] Silicon Circuit Board (Assembler): Copper Sheet 27.5/min + Silica 27.5/min -> Circuit Board 12.5/min
+[Alt] Silicon High-Speed Connector (Manufacturer): Quickwire 90/min + Silica 37.5/min + Circuit Board 3/min -> High-Speed Connector 3/min
+[Alt] Sloppy Alumina (Refinery): Bauxite 200/min + Water 200/min -> Alumina Solution 240/min
+[Alt] Solid Steel Ingot (Foundry): Iron Ingot 40/min + Coal 40/min -> Steel Ingot 60/min
+[Alt] Steamed Copper Sheet (Refinery): Copper Ingot 22.5/min + Water 22.5/min -> Copper Sheet 22.5/min
+[Alt] Steel Canister (Constructor): Steel Ingot 40/min -> Empty Canister 40/min
+[Alt] Steel Cast Plate (Foundry): Iron Ingot 15/min + Steel Ingot 15/min -> Iron Plate 45/min
+[Alt] Steel Rod (Constructor): Steel Ingot 12/min -> Iron Rod 48/min
+[Alt] Steel Rotor (Assembler): Steel Pipe 10/min + Wire 30/min -> Rotor 5/min
+[Alt] Steel Screws (Constructor): Steel Beam 5/min -> Screws 260/min
+[Alt] Steeled Frame (Assembler): Reinforced Iron Plate 2/min + Steel Pipe 10/min -> Modular Frame 3/min
+[Alt] Stitched Iron Plate (Assembler): Iron Plate 18.75/min + Wire 37.5/min -> Reinforced Iron Plate 5.625/min
+[Alt] Super-State Computer (Manufacturer): Computer 7.2/min + Electromagnetic Control Rod 2.4/min + Battery 24/min + Wire 60/min -> Supercomputer 2.4/min
+[Alt] Tempered Caterium Ingot (Foundry): Caterium Ore 45/min + Petroleum Coke 15/min -> Caterium Ingot 22.5/min
+[Alt] Tempered Copper Ingot (Foundry): Copper Ore 25/min + Petroleum Coke 40/min -> Copper Ingot 60/min
+[Alt] Turbo Blend Fuel (Blender): Fuel 15/min + Heavy Oil Residue 30/min + Sulfur 22.5/min + Petroleum Coke 22.5/min -> Turbofuel 45/min
+[Alt] Turbo Diamonds (Particle Accelerator): Coal 600/min + Packaged Turbofuel 40/min -> Diamonds 60/min
+[Alt] Turbo Electric Motor (Manufacturer): Motor 6.5625/min + Radio Control Unit 8.4375/min + Electromagnetic Control Rod 4.6875/min + Rotor 6.5625/min -> Turbo Motor 2.8125/min
+[Alt] Turbo Heavy Fuel (Refinery): Heavy Oil Residue 37.5/min + Compacted Coal 30/min -> Turbofuel 30/min
+[Alt] Turbo Pressure Motor (Manufacturer): Motor 7.5/min + Pressure Conversion Cube 1.875/min + Packaged Nitrogen Gas 45/min + Stator 15/min -> Turbo Motor 3.75/min
+[Alt] Uranium Fuel Unit (Manufacturer): Encased Uranium Cell 20/min + Electromagnetic Control Rod 2/min + Crystal Oscillator 0.6/min + Rotor 2/min -> Uranium Fuel Rod 0.6/min
+[Alt] Wet Concrete (Refinery): Limestone 120/min + Water 100/min -> Concrete 80/min

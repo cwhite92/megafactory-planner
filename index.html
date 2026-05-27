@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Satisfactory Megafactory Planner</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0d12;--card:#111620;--card2:#161c2a;--border:#1e2535;--border2:#2a3347;
+  --orange:#f97316;--orange-bg:rgba(249,115,22,.08);--orange-dim:#7c3a0e;
+  --blue:#3b82f6;--blue-bg:rgba(59,130,246,.15);
+  --green:#22c55e;--green-bg:rgba(34,197,94,.1);
+  --yellow:#eab308;--yellow-bg:rgba(234,179,8,.1);
+  --red:#ef4444;--text:#dde4f0;--muted:#8899aa;--muted2:#566272;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column}
+header{flex-shrink:0;background:var(--card);border-bottom:2px solid var(--orange);padding:12px 20px;display:flex;align-items:center;gap:16px}
+header h1{font-size:18px;font-weight:700;color:var(--orange);letter-spacing:.3px}
+header p{color:var(--muted);font-size:12px}
+.layout{flex:1;display:grid;grid-template-columns:360px 1fr;overflow:hidden}
+aside{background:var(--card);border-right:1px solid var(--border);overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+section.panel{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px}
+section.panel h2{font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.hint{font-size:11px;color:var(--muted2);margin-bottom:8px;line-height:1.4}
+.entry-list{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;min-height:20px}
+.entry{display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px}
+.entry .name{flex:1;font-weight:500;font-size:13px}
+.entry .rate{color:var(--orange);font-weight:600;font-size:12px;white-space:nowrap}
+.entry .rm{background:none;border:none;color:var(--muted2);cursor:pointer;padding:0 3px;font-size:16px;line-height:1;border-radius:3px}
+.entry .rm:hover{color:var(--red)}
+.add-row{display:flex;gap:6px}
+.add-row input{background:var(--card);border:1px solid var(--border2);border-radius:4px;padding:6px 8px;color:var(--text);font-size:13px;outline:none}
+.add-row input:focus{border-color:var(--orange)}
+.add-row input.flex1{flex:1}
+.add-row input.w80{width:80px}
+.add-row button,.plan-btn{background:var(--orange);border:none;border-radius:4px;color:#000;font-weight:700;padding:6px 12px;cursor:pointer;font-size:13px;white-space:nowrap}
+.add-row button:hover,.plan-btn:hover{filter:brightness(1.1)}
+.plan-btn{width:100%;padding:11px;font-size:14px;letter-spacing:.3px;border-radius:6px}
+.recipe-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)}
+.recipe-row:last-child{border-bottom:none}
+.recipe-row label{flex:1;font-size:13px;font-weight:500}
+.recipe-row select{background:var(--card2);border:1px solid var(--border2);border-radius:4px;color:var(--text);padding:3px 6px;font-size:12px;outline:none;max-width:160px}
+.recipe-row select:focus{border-color:var(--blue)}
+.empty{font-size:12px;color:var(--muted2);font-style:italic;padding:4px 0}
+main{overflow:auto;padding:20px}
+#placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--muted2);text-align:center;gap:10px}
+#placeholder .icon{font-size:56px;opacity:.2}
+#placeholder p{font-size:14px;line-height:1.6}
+#placeholder strong{color:var(--orange)}
+.summary{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 14px}
+.stat .slabel{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.stat .sval{font-size:20px;font-weight:700;color:var(--orange)}
+.warn-box{background:var(--yellow-bg);border:1px solid var(--yellow);border-radius:6px;padding:10px 14px;margin-bottom:16px}
+.warn-box h3{font-size:11px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.warn-box li{color:var(--yellow);font-size:12px;margin-left:16px;margin-bottom:3px;line-height:1.4}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.table-wrap h2{padding:10px 16px;font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+th{background:var(--bg);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border)}
+th:last-child{text-align:right}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.015)}
+.col-floor{white-space:nowrap}
+.floor-num{font-weight:700;font-size:13px;color:var(--muted2)}
+.floor-intake .floor-num{color:var(--green);font-size:12px}
+.floor-intake td{background:var(--green-bg)}
+.floor-output td{background:var(--orange-bg)}
+.prod-name{font-weight:600;color:var(--text);font-size:14px}
+.prod-rate{font-size:11px;color:var(--orange);margin-top:2px}
+.byproduct{font-size:10px;color:var(--muted2);margin-top:3px;font-style:italic}
+.recipe-cell{font-size:13px;color:var(--text)}
+.machine-cell{font-size:11px;color:var(--muted);margin-top:2px}
+.alt-badge{display:inline-block;background:var(--orange-dim);color:var(--orange);border-radius:3px;padding:1px 4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-left:4px;vertical-align:middle}
+.inputs{display:flex;flex-direction:column;gap:3px}
+.inp{display:flex;align-items:center;gap:6px;font-size:12px}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot.bus{background:var(--blue)}
+.dot.imported{background:var(--green)}
+.inp-rate{color:var(--muted);font-size:11px;margin-left:auto;padding-left:8px;white-space:nowrap}
+.mc{font-weight:700;font-size:15px;text-align:right;white-space:nowrap}
+.mc small{display:block;font-size:10px;font-weight:400;color:var(--muted);margin-top:1px}
+.preset-btn{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer;margin-bottom:8px}
+.preset-btn:hover{border-color:var(--orange);color:var(--orange)}
+.machines-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.mtoggle{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:4px 5px;border-radius:3px;user-select:none}
+.mtoggle:hover{background:var(--card)}
+.mtoggle input{accent-color:var(--orange);cursor:pointer;flex-shrink:0}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>⚙ Megafactory Planner</h1>
+  </div>
+  <p>Plan vertical megafactory layouts for Satisfactory</p>
+</header>
+<div class="layout">
+  <aside>
+    <section class="panel">
+      <h2>Desired Outputs</h2>
+      <div id="outputs-list" class="entry-list"></div>
+      <div class="add-row">
+        <input type="text" id="out-item" class="flex1" placeholder="Item name…" list="items-dl" autocomplete="off">
+        <input type="number" id="out-rate" class="w80" placeholder="/min" min="0.01" step="0.01">
+        <button onclick="addOutput()">Add</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Imported Items</h2>
+      <p class="hint">Items shipped in from outside — won't get a production floor.</p>
+      <button class="preset-btn" onclick="loadPreset()">Load sample (Computer factory)</button>
+      <div id="imports-list" class="entry-list"></div>
+      <div class="add-row">
+        <input type="text" id="imp-item" class="flex1" placeholder="Item name…" list="items-dl" autocomplete="off">
+        <button onclick="addImport()">Add</button>
+      </div>
+    </section>
+
+    <section class="panel" id="machines-section">
+      <h2>Available Machines</h2>
+      <p class="hint">Disable a machine type to exclude all its recipes from planning.</p>
+      <div id="machines-grid" class="machines-grid"></div>
+    </section>
+
+    <section class="panel" id="recipe-section">
+      <h2>Recipe Selection</h2>
+      <p class="hint">Items with multiple recipes — generate a plan first to see options.</p>
+      <div id="recipes-list"><div class="empty">Generate a floor plan to see recipe options.</div></div>
+    </section>
+
+    <button class="plan-btn" onclick="generate()">Generate Floor Plan</button>
+  </aside>
+
+  <main>
+    <div id="placeholder">
+      <div class="icon">🏭</div>
+      <p>Add your desired outputs and imported items,<br>then click <strong>Generate Floor Plan</strong>.</p>
+    </div>
+    <div id="result" style="display:none">
+      <div id="summary" class="summary"></div>
+      <div id="warnings"></div>
+      <div class="table-wrap">
+        <h2>Factory Floor Plan — top floor first</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Floor</th>
+              <th>Product</th>
+              <th>Recipe</th>
+              <th>Inputs from bus</th>
+              <th style="text-align:right"># Machines</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<datalist id="items-dl"></datalist>
+
+<script src="planner.js"></script>
+<script src="recipes-data.js"></script>
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+// ALL_RECIPES, ALL_MACHINES, BY_OUTPUT_UI populated async in init() below.
+let ALL_RECIPES = [];
+let ALL_MACHINES = [];
+let BY_OUTPUT_UI = {};  // all recipes by primary output, used for recipe-choice UI
+
+const S = { outputs: [], imports: [], choices: {}, machines: new Set() };
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(function init() {
+  ALL_RECIPES = parseRecipes(RECIPE_DATA);
+
+  for (const r of ALL_RECIPES) {
+    const primary = r.outputs[0].item;
+    if (!BY_OUTPUT_UI[primary]) BY_OUTPUT_UI[primary] = [];
+    BY_OUTPUT_UI[primary].push(r);
+  }
+
+  ALL_MACHINES = [...new Set(ALL_RECIPES.map(r => r.machine))].sort();
+  S.machines = new Set(ALL_MACHINES);
+
+  const allItems = [...new Set([
+    ...ALL_RECIPES.flatMap(r => r.inputs.map(i => i.item)),
+    ...ALL_RECIPES.flatMap(r => r.outputs.map(o => o.item)),
+  ])].sort();
+  const dl = document.getElementById('items-dl');
+  for (const n of allItems) { const o = document.createElement('option'); o.value = n; dl.appendChild(o); }
+
+  renderOutputs();
+  renderImports();
+  renderMachines();
+})();
+
+// ── PLANNING ─────────────────────────────────────────────────────────────────
+function plan() {
+  return planFactory({
+    recipes: ALL_RECIPES,
+    imports: S.imports,
+    outputs: S.outputs,
+    machines: [...S.machines],
+    altRecipes: ALL_RECIPES.filter(r => r.isAlt).map(r => r.name),
+    choices: S.choices,
+  });
+}
+
+// Returns recipes available for an item given the current machine toggle state.
+function recipesForItem(item) {
+  return (BY_OUTPUT_UI[item] || []).filter(r => S.machines.has(r.machine));
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function fmtR(n) {
+  if (n === Math.round(n)) return n.toString();
+  const s = n.toFixed(4);
+  return s.replace(/\.?0+$/, '');
+}
+
+function renderOutputs() {
+  const el = document.getElementById('outputs-list');
+  if (!S.outputs.length) { el.innerHTML = '<div class="empty">None added yet.</div>'; return; }
+  el.innerHTML = S.outputs.map((d, i) => `
+    <div class="entry">
+      <span class="name">${esc(d.item)}</span>
+      <span class="rate">${fmtR(d.rate)}/min</span>
+      <button class="rm" onclick="removeOutput(${i})">×</button>
+    </div>`).join('');
+}
+
+function renderImports() {
+  const el = document.getElementById('imports-list');
+  if (!S.imports.length) { el.innerHTML = '<div class="empty">None added yet.</div>'; return; }
+  el.innerHTML = S.imports.map((item, i) => `
+    <div class="entry">
+      <span class="name">${esc(item)}</span>
+      <button class="rm" onclick="removeImport(${i})">×</button>
+    </div>`).join('');
+}
+
+function renderRecipeChoices(rates) {
+  const imp = new Set(S.imports);
+  const el = document.getElementById('recipes-list');
+  const items = Object.keys(rates).filter(item => {
+    if (imp.has(item)) return false;
+    return recipesForItem(item).length > 1;
+  }).sort();
+  if (!items.length) { el.innerHTML = '<div class="empty">All needed items have only one recipe.</div>'; return; }
+  el.innerHTML = items.map(item => {
+    const recipes = recipesForItem(item);
+    const current = S.choices[item] || (recipes.find(r => !r.isAlt) || recipes[0]).name;
+    const opts = recipes.map(r =>
+      `<option value="${esc(r.name)}" ${r.name === current ? 'selected' : ''}>${r.isAlt ? '[Alt] ' : ''}${esc(r.name)}</option>`
+    ).join('');
+    return `<div class="recipe-row">
+      <label>${esc(item)}</label>
+      <select onchange="setChoice('${esc(item)}', this.value)">${opts}</select>
+    </div>`;
+  }).join('');
+}
+
+function renderFloorPlan(result) {
+  const { floors, warnings, rates } = result;
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('result').style.display = 'block';
+
+  const imp = new Set(S.imports);
+  const totalMC = floors.reduce((s, f) => s + Math.ceil(f.machineCount), 0);
+  const machineTypes = [...new Set(floors.map(f => f.recipe.machine))].length;
+
+  document.getElementById('summary').innerHTML = `
+    <div class="stat"><div class="slabel">Production Floors</div><div class="sval">${floors.length}</div></div>
+    <div class="stat"><div class="slabel">Total Machines</div><div class="sval">${fmtR(totalMC)}</div></div>
+    <div class="stat"><div class="slabel">Machine Types</div><div class="sval">${machineTypes}</div></div>
+    <div class="stat"><div class="slabel">Imported Items</div><div class="sval">${S.imports.length}</div></div>
+  `;
+
+  document.getElementById('warnings').innerHTML = warnings.length
+    ? `<div class="warn-box"><h3>⚠ Warnings</h3><ul>${warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>`
+    : '';
+
+  const tbody = document.getElementById('tbody');
+  const rows = [];
+
+  // Production floors — highest floor first (top of building at top of table)
+  for (const f of [...floors].reverse()) {
+    const byHtml = f.byproducts.length
+      ? `<div class="byproduct">+ ${f.byproducts.map(b => `${esc(b.item)} ${fmtR(b.rate)}/min`).join(', ')} (byproduct)</div>`
+      : '';
+    const inpHtml = f.inputs.map(i =>
+      `<div class="inp"><div class="dot ${i.imported ? 'imported' : 'bus'}"></div><span>${esc(i.item)}</span><span class="inp-rate">${fmtR(i.rate)}/min</span></div>`
+    ).join('');
+    const whole = Math.ceil(f.machineCount);
+    const partial = f.machineCount % 1;
+    const lastPct = partial > 0.0001 ? partial * 100 : null;
+    const mcNote = lastPct ? `<small>last at ${lastPct.toFixed(1)}%</small>` : '';
+    rows.push(`<tr class="${f.isDesired ? 'floor-output' : ''}">
+      <td class="col-floor"><div class="floor-num">${f.num}</div></td>
+      <td>
+        <div class="prod-name">${esc(f.product)}</div>
+        <div class="prod-rate">${fmtR(f.outputRate)}/min${byHtml}</div>
+      </td>
+      <td>
+        <div class="recipe-cell">${esc(f.recipe.name)}${f.recipe.isAlt ? '<span class="alt-badge">Alt</span>' : ''}</div>
+        <div class="machine-cell">${esc(f.recipe.machine)}</div>
+      </td>
+      <td><div class="inputs">${inpHtml || '<span style="color:var(--muted2);font-size:12px">No inputs</span>'}</div></td>
+      <td><div class="mc">${whole}${mcNote}</div></td>
+    </tr>`);
+  }
+
+  // Intake row — at the bottom (ground floor)
+  const importedNeeded = S.imports.filter(i => rates[i] > 0);
+  if (importedNeeded.length) {
+    const inputsHtml = importedNeeded.map(i =>
+      `<div class="inp"><div class="dot imported"></div><span>${esc(i)}</span><span class="inp-rate">${fmtR(rates[i])}/min</span></div>`
+    ).join('');
+    rows.push(`<tr class="floor-intake">
+      <td class="col-floor"><div class="floor-num">Intake</div></td>
+      <td><div class="prod-name" style="color:var(--green)">Factory Inputs</div><div class="prod-rate">Base level — items fed onto conveyor bus</div></td>
+      <td colspan="2"><div class="inputs">${inputsHtml}</div></td>
+      <td></td>
+    </tr>`);
+  }
+
+  if (!rows.length) rows.push(`<tr><td colspan="5" style="text-align:center;color:var(--muted2);padding:20px">No floors to display.</td></tr>`);
+  tbody.innerHTML = rows.join('');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+function addOutput() {
+  const iEl = document.getElementById('out-item'), rEl = document.getElementById('out-rate');
+  const item = iEl.value.trim(), rate = parseFloat(rEl.value);
+  if (!item || !rate || rate <= 0) { if (!item) iEl.focus(); else rEl.focus(); return; }
+  S.outputs.push({ item, rate });
+  iEl.value = ''; rEl.value = ''; iEl.focus();
+  renderOutputs();
+}
+function removeOutput(i) { S.outputs.splice(i, 1); renderOutputs(); }
+
+function addImport() {
+  const el = document.getElementById('imp-item');
+  const item = el.value.trim();
+  if (!item || S.imports.includes(item)) { el.value = ''; el.focus(); return; }
+  S.imports.push(item);
+  el.value = ''; el.focus();
+  renderImports();
+}
+function removeImport(i) { S.imports.splice(i, 1); renderImports(); }
+
+function setChoice(item, recipeName) {
+  S.choices[item] = recipeName;
+  generate();
+}
+
+function generate() {
+  const result = plan();
+  renderRecipeChoices(result.rates);
+  renderFloorPlan(result);
+}
+
+function renderMachines() {
+  const el = document.getElementById('machines-grid');
+  el.innerHTML = ALL_MACHINES.map(m => `
+    <label class="mtoggle">
+      <input type="checkbox" ${S.machines.has(m) ? 'checked' : ''} onchange="toggleMachine('${esc(m)}', this.checked)">
+      ${esc(m)}
+    </label>`).join('');
+}
+
+function toggleMachine(m, enabled) {
+  if (enabled) S.machines.add(m); else S.machines.delete(m);
+  if (document.getElementById('result').style.display !== 'none') generate();
+}
+
+function loadPreset() {
+  S.outputs = [{ item: 'Computer', rate: 5 }];
+  S.imports = ['Iron Ore', 'Copper Ore', 'Coal', 'Limestone', 'Crude Oil', 'Caterium Ore', 'Water'];
+  S.choices = {};
+  S.machines = new Set(ALL_MACHINES);
+  renderOutputs();
+  renderImports();
+  renderMachines();
+  generate();
+}
+
+// ── KEY BINDINGS ──────────────────────────────────────────────────────────────
+document.getElementById('out-item').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('out-rate').focus(); });
+document.getElementById('out-rate').addEventListener('keydown', e => { if (e.key === 'Enter') addOutput(); });
+document.getElementById('imp-item').addEventListener('keydown', e => { if (e.key === 'Enter') addImport(); });
+
+</script>
+</body>
+</html>
