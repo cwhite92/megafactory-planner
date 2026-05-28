@@ -91,12 +91,32 @@ function planFactory({
     const candidates = BY_OUTPUT[item];
     if (!candidates || !candidates.length) return null;
     if (candidates.length === 1) return candidates[0];
+
+    // Recursively estimates total new production floors a recipe choice would require.
+    // `seen` is shared across siblings of the same candidate to avoid double-counting
+    // items used by multiple inputs of the same recipe.
+    function transitiveNew(it, seen) {
+      if (imp.has(it) || it in rates || seen.has(it)) return 0;
+      seen.add(it);
+      if (chosenRecipes[it]) return 1 + chosenRecipes[it].inputs.reduce((s, i) => s + transitiveNew(i.item, seen), 0);
+      const cands = BY_OUTPUT[it];
+      if (!cands || !cands.length) return 1;
+      // Greedy sub-choice: pick the candidate with the fewest direct new inputs for estimation.
+      let bestR = cands[0], bestDirect = Infinity;
+      for (const r of cands) {
+        const d = r.inputs.filter(i => !imp.has(i.item) && !(i.item in rates) && !seen.has(i.item)).length;
+        if (d < bestDirect) { bestDirect = d; bestR = r; }
+      }
+      return 1 + bestR.inputs.reduce((s, i) => s + transitiveNew(i.item, seen), 0);
+    }
+
     let best = null, bestScore = -Infinity;
     for (const r of candidates) {
       const oe = r.outputs.find(o => o.item === item);
       if (!oe) continue;
-      // Count inputs not yet needed by anything else and not imported — each is a new floor.
-      const newFloors = r.inputs.filter(i => !imp.has(i.item) && !(i.item in rates)).length;
+      // Count total transitive new floors — not just direct inputs.
+      const seen = new Set([item]);
+      const newFloors = r.inputs.reduce((s, i) => s + transitiveNew(i.item, seen), 0);
       // Primary: fewer new floors. Tiebreak: higher output rate = fewer machines.
       const score = -newFloors * 1e6 + oe.rate;
       if (score > bestScore) { bestScore = score; best = r; }
