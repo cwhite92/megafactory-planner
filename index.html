@@ -269,7 +269,7 @@ const S = {
   ALL_RECIPES = parseRecipes(RECIPE_DATA);
   ALL_MACHINES = [...new Set(ALL_RECIPES.map(r => r.machine))].sort();
 
-  S.imports = ['Iron Ingot','Copper Ingot','Steel Ingot','Aluminum Ingot','Plastic','Rubber','Raw Quartz','Limestone','Nitrogen Gas','Water','Sulfur'];
+  S.imports = ['Iron Ingot','Copper Ingot','Steel Ingot','Aluminum Ingot','Plastic','Rubber','Raw Quartz','Limestone','Nitrogen Gas','Water','Sulfur','Concrete'];
   S.machines = new Set(ALL_MACHINES.filter(m => m !== 'Converter'));
   S.selectedRecipes = new Set(ALL_RECIPES.filter(r => !r.isAlt).map(r => r.name));
 
