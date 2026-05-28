@@ -33,11 +33,12 @@ section.panel h2{font-size:11px;font-weight:700;color:var(--orange);text-transfo
 .add-row{display:flex;gap:6px}
 .add-row input{background:var(--card);border:1px solid var(--border2);border-radius:4px;padding:6px 8px;color:var(--text);font-size:13px;outline:none}
 .add-row input:focus{border-color:var(--orange)}
+.input-error{border-color:var(--red)!important;animation:shake .18s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}30%{transform:translateX(-4px)}70%{transform:translateX(4px)}}
 .add-row input.flex1{flex:1}
 .add-row input.w80{width:80px}
-.add-row button,.plan-btn{background:var(--orange);border:none;border-radius:4px;color:#000;font-weight:700;padding:6px 12px;cursor:pointer;font-size:13px;white-space:nowrap}
-.add-row button:hover,.plan-btn:hover{filter:brightness(1.1)}
-.plan-btn{width:100%;padding:11px;font-size:14px;letter-spacing:.3px;border-radius:6px}
+.add-row button{background:var(--orange);border:none;border-radius:4px;color:#000;font-weight:700;padding:6px 12px;cursor:pointer;font-size:13px;white-space:nowrap}
+.add-row button:hover{filter:brightness(1.1)}
 .recipe-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)}
 .recipe-row:last-child{border-bottom:none}
 .recipe-row label{flex:1;font-size:13px;font-weight:500}
@@ -85,10 +86,18 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .mc small{display:block;font-size:10px;font-weight:400;color:var(--muted);margin-top:1px}
 .preset-btn{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer;margin-bottom:8px}
 .preset-btn:hover{border-color:var(--orange);color:var(--orange)}
-.machines-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px}
-.mtoggle{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:4px 5px;border-radius:3px;user-select:none}
+.recipe-list{display:flex;flex-direction:column;gap:1px;max-height:180px;overflow-y:auto;margin-top:2px}
+.recipe-list::-webkit-scrollbar{width:4px}
+.recipe-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.mtoggle{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:3px 5px;border-radius:3px;user-select:none}
 .mtoggle:hover{background:var(--card)}
 .mtoggle input{accent-color:var(--orange);cursor:pointer;flex-shrink:0}
+.toggle-all-btn{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;padding:3px 8px;cursor:pointer;flex-shrink:0}
+.toggle-all-btn:hover{border-color:var(--orange);color:var(--orange)}
+.recipe-search{flex:1;background:var(--card);border:1px solid var(--border2);border-radius:4px;padding:4px 8px;color:var(--text);font-size:12px;outline:none;display:block;width:100%;margin-bottom:4px}
+.recipe-search:focus{border-color:var(--orange)}
+.recipe-controls{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.recipe-controls .recipe-search{margin-bottom:0}
 </style>
 </head>
 <body>
@@ -121,19 +130,29 @@ tr:hover td{background:rgba(255,255,255,.015)}
       </div>
     </section>
 
-    <section class="panel" id="machines-section">
-      <h2>Available Machines</h2>
-      <p class="hint">Disable a machine type to exclude all its recipes from planning.</p>
-      <div id="machines-grid" class="machines-grid"></div>
+    <section class="panel">
+      <h2>Machines</h2>
+      <p class="hint">Uncheck a machine to hide and disable all its recipes.</p>
+      <div id="machines-grid" class="recipe-list"></div>
     </section>
 
-    <section class="panel" id="recipe-section">
-      <h2>Recipe Selection</h2>
-      <p class="hint">Items with multiple recipes — generate a plan first to see options.</p>
-      <div id="recipes-list"><div class="empty">Generate a floor plan to see recipe options.</div></div>
+    <section class="panel">
+      <h2>Base Recipes</h2>
+      <p class="hint">Standard recipes — uncheck to exclude from planning.</p>
+      <input type="text" class="recipe-search" id="base-search" placeholder="Search recipes…" oninput="renderBaseRecipes()">
+      <div id="base-recipes-list" class="recipe-list"></div>
     </section>
 
-    <button class="plan-btn" onclick="generate()">Generate Floor Plan</button>
+    <section class="panel">
+      <h2>Alt Recipes</h2>
+      <p class="hint">Alternate recipes are opt-in. The planner picks the best available recipe per item.</p>
+      <div class="recipe-controls">
+        <button class="toggle-all-btn" onclick="toggleAllAlts()">Toggle all</button>
+        <input type="text" class="recipe-search" id="alt-search" placeholder="Search recipes…" oninput="renderAltRecipes()">
+      </div>
+      <div id="alt-recipes-list" class="recipe-list"></div>
+    </section>
+
   </aside>
 
   <main>
@@ -168,53 +187,48 @@ tr:hover td{background:rgba(255,255,255,.015)}
 <script src="recipes-data.js"></script>
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
-// ALL_RECIPES, ALL_MACHINES, BY_OUTPUT_UI populated async in init() below.
 let ALL_RECIPES = [];
 let ALL_MACHINES = [];
-let BY_OUTPUT_UI = {};  // all recipes by primary output, used for recipe-choice UI
+let ALL_ITEMS = new Set();
 
-const S = { outputs: [], imports: [], choices: {}, machines: new Set() };
+const S = {
+  outputs: [],
+  imports: [],
+  selectedRecipes: new Set(),
+  machines: new Set(),
+};
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 (function init() {
   ALL_RECIPES = parseRecipes(RECIPE_DATA);
-
-  for (const r of ALL_RECIPES) {
-    const primary = r.outputs[0].item;
-    if (!BY_OUTPUT_UI[primary]) BY_OUTPUT_UI[primary] = [];
-    BY_OUTPUT_UI[primary].push(r);
-  }
-
   ALL_MACHINES = [...new Set(ALL_RECIPES.map(r => r.machine))].sort();
-  S.machines = new Set(ALL_MACHINES);
+
+  S.imports = ['Iron Ingot','Copper Ingot','Steel Ingot','Aluminum Ingot','Plastic','Rubber','Raw Quartz','Limestone','Nitrogen Gas','Water','Sulfur'];
+  S.machines = new Set(ALL_MACHINES.filter(m => m !== 'Converter'));
+  S.selectedRecipes = new Set(ALL_RECIPES.filter(r => !r.isAlt).map(r => r.name));
 
   const allItems = [...new Set([
     ...ALL_RECIPES.flatMap(r => r.inputs.map(i => i.item)),
     ...ALL_RECIPES.flatMap(r => r.outputs.map(o => o.item)),
   ])].sort();
+  ALL_ITEMS = new Set(allItems);
   const dl = document.getElementById('items-dl');
   for (const n of allItems) { const o = document.createElement('option'); o.value = n; dl.appendChild(o); }
 
   renderOutputs();
   renderImports();
   renderMachines();
+  renderBaseRecipes();
+  renderAltRecipes();
 })();
 
 // ── PLANNING ─────────────────────────────────────────────────────────────────
 function plan() {
   return planFactory({
-    recipes: ALL_RECIPES,
+    availableRecipes: ALL_RECIPES.filter(r => S.selectedRecipes.has(r.name) && S.machines.has(r.machine)),
     imports: S.imports,
     outputs: S.outputs,
-    machines: [...S.machines],
-    altRecipes: ALL_RECIPES.filter(r => r.isAlt).map(r => r.name),
-    choices: S.choices,
   });
-}
-
-// Returns recipes available for an item given the current machine toggle state.
-function recipesForItem(item) {
-  return (BY_OUTPUT_UI[item] || []).filter(r => S.machines.has(r.machine));
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
@@ -245,25 +259,70 @@ function renderImports() {
     </div>`).join('');
 }
 
-function renderRecipeChoices(rates) {
-  const imp = new Set(S.imports);
-  const el = document.getElementById('recipes-list');
-  const items = Object.keys(rates).filter(item => {
-    if (imp.has(item)) return false;
-    return recipesForItem(item).length > 1;
-  }).sort();
-  if (!items.length) { el.innerHTML = '<div class="empty">All needed items have only one recipe.</div>'; return; }
-  el.innerHTML = items.map(item => {
-    const recipes = recipesForItem(item);
-    const current = S.choices[item] || (recipes.find(r => !r.isAlt) || recipes[0]).name;
-    const opts = recipes.map(r =>
-      `<option value="${esc(r.name)}" ${r.name === current ? 'selected' : ''}>${r.isAlt ? '[Alt] ' : ''}${esc(r.name)}</option>`
-    ).join('');
-    return `<div class="recipe-row">
-      <label>${esc(item)}</label>
-      <select onchange="setChoice('${esc(item)}', this.value)">${opts}</select>
-    </div>`;
-  }).join('');
+function renderMachines() {
+  const el = document.getElementById('machines-grid');
+  el.innerHTML = ALL_MACHINES.map(m => `
+    <label class="mtoggle">
+      <input type="checkbox" ${S.machines.has(m) ? 'checked' : ''} onchange="toggleMachine('${esc(m)}', this.checked)">
+      ${esc(m)}
+    </label>`).join('');
+}
+
+function toggleMachine(m, enabled) {
+  if (enabled) {
+    S.machines.add(m);
+    for (const r of ALL_RECIPES) {
+      if (r.machine === m && !r.isAlt) S.selectedRecipes.add(r.name);
+    }
+  } else {
+    S.machines.delete(m);
+    for (const r of ALL_RECIPES) {
+      if (r.machine === m) S.selectedRecipes.delete(r.name);
+    }
+  }
+  renderBaseRecipes();
+  renderAltRecipes();
+  autoGenerate();
+}
+
+function renderBaseRecipes() {
+  const el = document.getElementById('base-recipes-list');
+  const q = document.getElementById('base-search').value.toLowerCase();
+  const base = ALL_RECIPES.filter(r => !r.isAlt && S.machines.has(r.machine) && r.name.toLowerCase().includes(q));
+  if (!base.length) { el.innerHTML = '<div class="empty">No matching recipes.</div>'; return; }
+  el.innerHTML = base.map(r => `
+    <label class="mtoggle">
+      <input type="checkbox" ${S.selectedRecipes.has(r.name) ? 'checked' : ''} onchange="toggleRecipe('${esc(r.name)}', this.checked)">
+      ${esc(r.name)}
+    </label>`).join('');
+}
+
+function renderAltRecipes() {
+  const el = document.getElementById('alt-recipes-list');
+  const q = document.getElementById('alt-search').value.toLowerCase();
+  const alts = ALL_RECIPES.filter(r => r.isAlt && S.machines.has(r.machine) && r.name.toLowerCase().includes(q));
+  if (!alts.length) { el.innerHTML = '<div class="empty">No matching recipes.</div>'; return; }
+  el.innerHTML = alts.map(r => `
+    <label class="mtoggle">
+      <input type="checkbox" ${S.selectedRecipes.has(r.name) ? 'checked' : ''} onchange="toggleRecipe('${esc(r.name)}', this.checked)">
+      ${esc(r.name)}
+    </label>`).join('');
+}
+
+function toggleRecipe(name, enabled) {
+  if (enabled) S.selectedRecipes.add(name); else S.selectedRecipes.delete(name);
+  autoGenerate();
+}
+
+function toggleAllAlts() {
+  const q = document.getElementById('alt-search').value.toLowerCase();
+  const visible = ALL_RECIPES.filter(r => r.isAlt && S.machines.has(r.machine) && r.name.toLowerCase().includes(q));
+  const allOn = visible.every(r => S.selectedRecipes.has(r.name));
+  for (const r of visible) {
+    if (allOn) S.selectedRecipes.delete(r.name); else S.selectedRecipes.add(r.name);
+  }
+  renderAltRecipes();
+  autoGenerate();
 }
 
 function renderFloorPlan(result) {
@@ -339,59 +398,62 @@ function esc(s) {
 }
 
 // ── ACTIONS ───────────────────────────────────────────────────────────────────
+function markError(el) {
+  el.classList.remove('input-error');
+  void el.offsetWidth; // restart animation if already showing
+  el.classList.add('input-error');
+  el.addEventListener('input', () => el.classList.remove('input-error'), { once: true });
+  el.focus();
+}
+
 function addOutput() {
   const iEl = document.getElementById('out-item'), rEl = document.getElementById('out-rate');
   const item = iEl.value.trim(), rate = parseFloat(rEl.value);
   if (!item || !rate || rate <= 0) { if (!item) iEl.focus(); else rEl.focus(); return; }
+  if (!ALL_ITEMS.has(item)) { markError(iEl); return; }
   S.outputs.push({ item, rate });
   iEl.value = ''; rEl.value = ''; iEl.focus();
   renderOutputs();
+  autoGenerate();
 }
-function removeOutput(i) { S.outputs.splice(i, 1); renderOutputs(); }
+function removeOutput(i) { S.outputs.splice(i, 1); renderOutputs(); autoGenerate(); }
 
 function addImport() {
   const el = document.getElementById('imp-item');
   const item = el.value.trim();
   if (!item || S.imports.includes(item)) { el.value = ''; el.focus(); return; }
+  if (!ALL_ITEMS.has(item)) { markError(el); return; }
   S.imports.push(item);
   el.value = ''; el.focus();
   renderImports();
+  autoGenerate();
 }
-function removeImport(i) { S.imports.splice(i, 1); renderImports(); }
-
-function setChoice(item, recipeName) {
-  S.choices[item] = recipeName;
-  generate();
-}
+function removeImport(i) { S.imports.splice(i, 1); renderImports(); autoGenerate(); }
 
 function generate() {
   const result = plan();
-  renderRecipeChoices(result.rates);
   renderFloorPlan(result);
 }
 
-function renderMachines() {
-  const el = document.getElementById('machines-grid');
-  el.innerHTML = ALL_MACHINES.map(m => `
-    <label class="mtoggle">
-      <input type="checkbox" ${S.machines.has(m) ? 'checked' : ''} onchange="toggleMachine('${esc(m)}', this.checked)">
-      ${esc(m)}
-    </label>`).join('');
-}
-
-function toggleMachine(m, enabled) {
-  if (enabled) S.machines.add(m); else S.machines.delete(m);
-  if (document.getElementById('result').style.display !== 'none') generate();
+function autoGenerate() {
+  if (!S.outputs.length) {
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('placeholder').style.display = '';
+    return;
+  }
+  generate();
 }
 
 function loadPreset() {
   S.outputs = [{ item: 'Computer', rate: 5 }];
   S.imports = ['Iron Ore', 'Copper Ore', 'Coal', 'Limestone', 'Crude Oil', 'Caterium Ore', 'Water'];
-  S.choices = {};
-  S.machines = new Set(ALL_MACHINES);
+  S.machines = new Set(ALL_MACHINES.filter(m => m !== 'Converter'));
+  S.selectedRecipes = new Set(ALL_RECIPES.filter(r => !r.isAlt).map(r => r.name));
   renderOutputs();
   renderImports();
   renderMachines();
+  renderBaseRecipes();
+  renderAltRecipes();
   generate();
 }
 

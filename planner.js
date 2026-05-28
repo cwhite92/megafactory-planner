@@ -1,6 +1,5 @@
 'use strict';
 
-// Parses the recipes.txt format into recipe objects.
 function parseRecipes(text) {
   const out = [];
   for (const raw of text.split('\n')) {
@@ -37,60 +36,77 @@ function parseRecipes(text) {
 // Plans a megafactory layout.
 //
 // params:
-//   recipes      - array from parseRecipes()
-//   imports      - string[] of items fed in from outside (no production floor)
-//   outputs      - {item, rate}[] of desired factory products
-//   machines     - string[] of enabled machine types (recipes for other types excluded)
-//   altRecipes   - string[] of alt recipe names that are opt-in enabled
-//   choices      - {[item]: recipeName} optional per-item recipe override
+//   availableRecipes - recipe objects already filtered to the user's selection;
+//                      when multiple recipes produce the same item the planner
+//                      automatically picks the best one (see chooseBestRecipe)
+//   imports          - string[] of items fed in from outside (no production floor)
+//   outputs          - {item, rate}[] of desired factory products
+//
+// Recipe selection heuristic (chooseBestRecipe):
+//   Primary:   prefer the recipe whose inputs are most "already in the plan"
+//              (imported or already needed by something else) — minimises new floors
+//   Tiebreak:  higher primary output rate → fewer machines for the same throughput
+//
+// Cycle-safety: BY_OUTPUT is keyed by PRIMARY output only — byproducts are never
+// indexed, preventing false cycles (e.g. Aluminum Scrap emits Water as byproduct;
+// indexing Water here would route Water through Aluminum Scrap → cycle).
 //
 // returns { floors, warnings, rates }
-//   floors  - ordered bottom-to-top (floor 1 first), each:
+//   floors  - ordered bottom-to-top (floor 1 first):
 //             { num, product, recipe, machineCount, outputRate, isDesired, inputs, byproducts }
 //   warnings - string[]
-//   rates    - {[item]: number} total items/min needed for each item in the plan
-//
-// Cycle-safety: BY_OUTPUT is indexed by PRIMARY output only. Byproducts are
-// never indexed, which eliminates false cycles such as Aluminum Scrap emitting
-// Water as a byproduct — without this constraint, Water would resolve to the
-// Aluminum Scrap recipe, producing a Water→Alumina Solution→Water cycle.
+//   rates    - { [item]: number } items/min needed across the whole plan
 function planFactory({
-  recipes,
+  availableRecipes,
   imports: importList = [],
   outputs: desiredOutputs = [],
-  machines: enabledMachines = [],
-  altRecipes: enabledAltRecipes = [],
-  choices = {},
 }) {
   const imp = new Set(importList);
-  const machineSet = new Set(enabledMachines);
-  const altSet = new Set(enabledAltRecipes);
   const warnings = [];
+  const warnedItems = new Set();
+
+  function warn(msg, key) {
+    if (warnedItems.has(key)) return;
+    warnedItems.add(key);
+    warnings.push(msg);
+  }
 
   if (!desiredOutputs.length) {
     return { floors: [], warnings: ['No desired outputs configured.'], rates: {} };
   }
 
-  // Build recipe index keyed by PRIMARY (first-listed) output only.
+  // Index available recipes by PRIMARY output only.
   const BY_OUTPUT = {};
-  for (const r of recipes) {
-    if (!machineSet.has(r.machine)) continue;
-    if (r.isAlt && !altSet.has(r.name)) continue;
+  for (const r of availableRecipes) {
     const primary = r.outputs[0].item;
     if (!BY_OUTPUT[primary]) BY_OUTPUT[primary] = [];
     BY_OUTPUT[primary].push(r);
   }
 
-  function chosenRecipe(item) {
-    const rs = BY_OUTPUT[item];
-    if (!rs || !rs.length) return null;
-    const override = choices[item];
-    if (override) return rs.find(r => r.name === override) || rs.find(r => !r.isAlt) || rs[0];
-    return rs.find(r => !r.isAlt) || rs[0];
+  // rates is populated during the DFS below; chooseBestRecipe closes over it so
+  // each decision reflects which inputs are already committed to the plan.
+  const rates = {};
+
+  function chooseBestRecipe(item) {
+    const candidates = BY_OUTPUT[item];
+    if (!candidates || !candidates.length) return null;
+    if (candidates.length === 1) return candidates[0];
+    let best = null, bestScore = -Infinity;
+    for (const r of candidates) {
+      const oe = r.outputs.find(o => o.item === item);
+      if (!oe) continue;
+      // Count inputs not yet needed by anything else and not imported — each is a new floor.
+      const newFloors = r.inputs.filter(i => !imp.has(i.item) && !(i.item in rates)).length;
+      // Primary: fewer new floors. Tiebreak: higher output rate = fewer machines.
+      const score = -newFloors * 1e6 + oe.rate;
+      if (score > bestScore) { bestScore = score; best = r; }
+    }
+    return best;
   }
 
-  // DFS to accumulate required production rates for every item in the chain.
-  const rates = {};
+  // Memoised recipe choices — locked in during DFS, reused by topo-sort and floor builder.
+  const chosenRecipes = {};
+
   for (const { item, rate } of desiredOutputs) {
     rates[item] = (rates[item] || 0) + rate;
   }
@@ -102,11 +118,12 @@ function planFactory({
     const item = stack.pop();
     if (visited.has(item) || imp.has(item)) continue;
     visited.add(item);
-    const r = chosenRecipe(item);
+    const r = chooseBestRecipe(item);
     if (!r) {
-      warnings.push(`"${item}" has no recipe and is not marked as imported.`);
+      warn(`"${item}" has no available recipe and is not marked as imported.`, item);
       continue;
     }
+    chosenRecipes[item] = r;
     const oe = r.outputs.find(o => o.item === item);
     if (!oe) continue;
     const mc = rates[item] / oe.rate;
@@ -118,29 +135,27 @@ function planFactory({
     }
   }
 
-  // Warn about items that are needed but have no recipe and aren't imported.
+  // Catch any items in rates that were never resolved (should be rare).
   for (const item of Object.keys(rates)) {
-    if (!imp.has(item) && !chosenRecipe(item)) {
-      warnings.push(
-        `"${item}" needs ${fmtRate(rates[item])}/min but has no recipe — mark it as imported if it's a raw resource.`
+    if (!imp.has(item) && !chosenRecipes[item]) {
+      warn(
+        `"${item}" needs ${fmtRate(rates[item])}/min but has no available recipe — ` +
+        `enable a recipe for it or mark it as imported.`,
+        item
       );
     }
   }
 
-  // Items that will receive a production floor.
-  const produced = Object.keys(rates).filter(i => !imp.has(i) && chosenRecipe(i));
+  const produced = Object.keys(rates).filter(i => !imp.has(i) && chosenRecipes[i]);
   const producedSet = new Set(produced);
 
   // Topological sort (Kahn's algorithm).
-  // Edge: inp.item → item means "item depends on inp.item" (inp must be on a lower floor).
-  // Self-referential inputs (net-consumption recipes like Encased Uranium Cell consuming
-  // Sulfuric Acid while also emitting it) are skipped to avoid spurious self-loops.
-  const adj = {};
-  const inDeg = {};
+  // Self-referential inputs (net-consumption recipes like Encased Uranium Cell
+  // that consume AND emit Sulfuric Acid) are skipped to prevent spurious self-loops.
+  const adj = {}, inDeg = {};
   for (const i of produced) { adj[i] = []; inDeg[i] = 0; }
-
   for (const item of produced) {
-    for (const inp of chosenRecipe(item).inputs) {
+    for (const inp of chosenRecipes[item].inputs) {
       if (producedSet.has(inp.item) && inp.item !== item) {
         adj[inp.item].push(item);
         inDeg[item]++;
@@ -154,22 +169,18 @@ function planFactory({
     queue.sort();
     const item = queue.shift();
     sorted.push(item);
-    for (const dep of adj[item]) {
-      if (--inDeg[dep] === 0) queue.push(dep);
-    }
+    for (const dep of adj[item]) { if (--inDeg[dep] === 0) queue.push(dep); }
   }
 
   if (sorted.length < produced.length) {
     const cycled = produced.filter(i => !sorted.includes(i));
-    warnings.push(
-      `Circular dependency detected among: ${cycled.join(', ')} — check recipe selections.`
-    );
+    warnings.push(`Circular dependency detected among: ${cycled.join(', ')} — check recipe selections.`);
     for (const i of cycled) sorted.push(i);
   }
 
   const desiredSet = new Set(desiredOutputs.map(d => d.item));
   const floors = sorted.map((item, idx) => {
-    const r = chosenRecipe(item);
+    const r = chosenRecipes[item];
     const oe = r.outputs.find(o => o.item === item);
     const mc = rates[item] / oe.rate;
     return {
@@ -192,7 +203,6 @@ function fmtRate(n) {
   return n.toFixed(4).replace(/\.?0+$/, '');
 }
 
-// Node.js compatibility for tests
 if (typeof module !== 'undefined') {
   module.exports = { parseRecipes, planFactory };
 }

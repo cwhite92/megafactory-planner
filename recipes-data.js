@@ -118,9 +118,7 @@ Packaged Turbofuel (Packager): Turbofuel 20/min + Empty Canister 20/min -> Packa
 Packaged Water (Packager): Water 60/min + Empty Canister 60/min -> Packaged Water 60/min
 Petroleum Coke (Refinery): Heavy Oil Residue 40/min -> Petroleum Coke 120/min
 Plastic (Refinery): Crude Oil 30/min -> Plastic 20/min + Heavy Oil Residue 10/min
-Plutonium Fuel Rod (Manufacturer): Encased Plutonium Cell 7.5/min + Steel Beam 4.5/min + Electromagnetic Control Rod 1.5/min + Heat Sink 2.5/min -> Plutonium Fuel Rod 0.25/min
-Plutonium Fuel Rod (burning) (Nuclear Power Plant): Plutonium Fuel Rod 0.1/min + Water 240/min -> Plutonium Waste 1/min
-Plutonium Pellet (Particle Accelerator): Non-Fissile Uranium 100/min + Uranium Waste 25/min -> Plutonium Pellet 30/min
+Plutonium Fuel Rod (Manufacturer): Encased Plutonium Cell 7.5/min + Steel Beam 4.5/min + Electromagnetic Control Rod 1.5/min + Heat Sink 2.5/min -> Plutonium Fuel Rod 0.25/minPlutonium Pellet (Particle Accelerator): Non-Fissile Uranium 100/min + Uranium Waste 25/min -> Plutonium Pellet 30/min
 Polyester Fabric (Refinery): Polymer Resin 30/min + Water 30/min -> Polyester Fabric 30/min
 Power Shard (1) (Constructor): Blue Power Slug 7.5/min -> Power Shard 7.5/min
 Power Shard (2) (Constructor): Yellow Power Slug 5/min -> Power Shard 10/min
@@ -184,9 +182,7 @@ Unpackage Rocket Fuel (Packager): Packaged Rocket Fuel 60/min -> Rocket Fuel 120
 Unpackage Sulfuric Acid (Packager): Packaged Sulfuric Acid 60/min -> Sulfuric Acid 60/min + Empty Canister 60/min
 Unpackage Turbofuel (Packager): Packaged Turbofuel 20/min -> Turbofuel 20/min + Empty Canister 20/min
 Unpackage Water (Packager): Packaged Water 120/min -> Water 120/min + Empty Canister 120/min
-Uranium Fuel Rod (Manufacturer): Encased Uranium Cell 20/min + Encased Industrial Beam 1.2/min + Electromagnetic Control Rod 2/min -> Uranium Fuel Rod 0.4/min
-Uranium Fuel Rod (burning) (Nuclear Power Plant): Uranium Fuel Rod 0.2/min + Water 240/min -> Uranium Waste 10/min
-Uranium Ore (Bauxite) (Converter): Reanimated SAM 10/min + Bauxite 480/min -> Uranium Ore 120/min
+Uranium Fuel Rod (Manufacturer): Encased Uranium Cell 20/min + Encased Industrial Beam 1.2/min + Electromagnetic Control Rod 2/min -> Uranium Fuel Rod 0.4/minUranium Ore (Bauxite) (Converter): Reanimated SAM 10/min + Bauxite 480/min -> Uranium Ore 120/min
 Versatile Framework (Assembler): Modular Frame 2.5/min + Steel Beam 30/min -> Versatile Framework 5/min
 Wire (Constructor): Copper Ingot 15/min -> Wire 30/min
 [Alt] Adhered Iron Plate (Assembler): Iron Plate 11.25/min + Rubber 3.75/min -> Reinforced Iron Plate 3.75/min
