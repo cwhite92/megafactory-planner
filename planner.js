@@ -140,7 +140,7 @@ function planFactory({
     visited.add(item);
     const r = chooseBestRecipe(item);
     if (!r) {
-      warn(`"${item}" has no available recipe and is not marked as imported.`, item);
+      warn(`Your factory needs "${item}". Either add a recipe for it or mark it as an imported item.`, item);
       continue;
     }
     chosenRecipes[item] = r;
@@ -194,7 +194,37 @@ function planFactory({
 
   if (sorted.length < produced.length) {
     const cycled = produced.filter(i => !sorted.includes(i));
-    warnings.push(`Circular dependency detected among: ${cycled.join(', ')} — check recipe selections.`);
+    const inCycle = new Set(cycled);
+
+    // DFS to find the minimal loop path within the cycled subgraph.
+    // Returns e.g. ['Crude Oil', 'Packaged Oil', 'Crude Oil'] — the repeated
+    // first element is what needs to be imported to break the cycle.
+    function findCyclePath() {
+      const done = new Set(), stack = [], onStack = new Set();
+      let found = null;
+      function dfs(node) {
+        if (found || done.has(node)) return;
+        if (onStack.has(node)) { found = [...stack.slice(stack.indexOf(node)), node]; return; }
+        onStack.add(node); stack.push(node);
+        for (const inp of (chosenRecipes[node]?.inputs ?? [])) {
+          if (inCycle.has(inp.item)) { dfs(inp.item); if (found) break; }
+        }
+        stack.pop(); onStack.delete(node); done.add(node);
+      }
+      for (const node of cycled) { dfs(node); if (found) break; }
+      return found;
+    }
+
+    const path = findCyclePath();
+    if (path) {
+      const root = path[0];
+      warnings.push(
+        `Circular dependency: ${path.join(' → ')}. ` +
+        `Add "${root}" to your imported items to fix this.`
+      );
+    } else {
+      warnings.push(`Circular dependency detected among: ${cycled.join(', ')} — check recipe selections.`);
+    }
     for (const i of cycled) sorted.push(i);
   }
 

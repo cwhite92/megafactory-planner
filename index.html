@@ -99,6 +99,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .inp-rate{color:var(--muted);font-size:11px;margin-left:auto;padding-left:8px;white-space:nowrap}
 .mc{font-weight:700;font-size:15px;text-align:right;white-space:nowrap}
 .mc small{display:block;font-size:10px;font-weight:400;color:var(--muted);margin-top:1px}
+.clock-ctrl{display:flex;align-items:center;justify-content:flex-end;gap:3px;margin-top:5px}
+.clock-ctrl label{font-size:10px;color:var(--muted);white-space:nowrap}
+.clock-input{background:transparent;border:none;border-bottom:1px solid var(--border2);color:var(--muted);font-size:11px;font-weight:600;width:34px;text-align:right;outline:none;padding:0 2px;-moz-appearance:textfield;cursor:pointer}
+.clock-input:focus{border-bottom-color:var(--orange);color:var(--orange)}
+.clock-input.overclocked{color:var(--orange)}
+.clock-input::-webkit-outer-spin-button,.clock-input::-webkit-inner-spin-button{-webkit-appearance:none}
 .preset-btn{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer;margin-bottom:8px}
 .preset-btn:hover{border-color:var(--orange);color:var(--orange)}
 .recipe-list{display:flex;flex-direction:column;gap:1px;max-height:180px;overflow-y:auto;margin-top:2px}
@@ -201,9 +207,9 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <thead>
             <tr>
               <th>Floor</th>
-              <th>Product</th>
-              <th>Recipe</th>
-              <th>Inputs from bus</th>
+              <th>Makes</th>
+              <th>Using</th>
+              <th>Takes from bus</th>
               <th style="text-align:right"># Machines</th>
             </tr>
           </thead>
@@ -228,6 +234,7 @@ const S = {
   imports: [],
   selectedRecipes: new Set(),
   machines: new Set(),
+  overclocks: {},
 };
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
@@ -417,6 +424,16 @@ function buildGraphLayout(floors) {
 
   // Group all consumers by their source floor
   const groupMap = new Map(); // source floor num -> Set of consumer floor nums
+
+  // Floor 0 supplies all imported inputs
+  for (const f of floors) {
+    if (f.inputs.some(i => i.imported)) {
+      if (!groupMap.has(0)) groupMap.set(0, new Set());
+      groupMap.get(0).add(f.num);
+    }
+  }
+
+  // Production floor connections
   for (const f of floors) {
     for (const inp of f.inputs) {
       if (!inp.imported && producedBy[inp.item]) {
@@ -556,10 +573,12 @@ function renderFloorPlan(result) {
     const inpHtml = f.inputs.map(i =>
       `<div class="inp"><div class="dot ${i.imported ? 'imported' : 'bus'}"></div><span>${esc(i.item)}</span><span class="inp-rate">${fmtR(i.rate)}/min</span></div>`
     ).join('');
-    const whole = Math.ceil(f.machineCount);
-    const partial = f.machineCount % 1;
-    const lastPct = partial > 0.0001 ? partial * 100 : null;
-    const mcNote = lastPct ? `<small>last at ${lastPct.toFixed(1)}%</small>` : '';
+    const clockPct = S.overclocks[f.product] || 100;
+    const adjustedMC = f.machineCount * 100 / clockPct;
+    const whole = Math.ceil(adjustedMC);
+    const partial = adjustedMC % 1;
+    const lastPct = partial > 0.0001 ? partial * clockPct : null;
+    const mcNote = lastPct !== null ? `<small>last at ${fmtR(lastPct)}%</small>` : '';
     rows.push(`<tr class="${f.isDesired ? 'floor-output' : ''}">
       <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">${f.num}</div></td>
       <td>
@@ -571,19 +590,34 @@ function renderFloorPlan(result) {
         <div class="machine-cell">${esc(f.recipe.machine)}</div>
       </td>
       <td><div class="inputs">${inpHtml || '<span style="color:var(--muted2);font-size:12px">No inputs</span>'}</div></td>
-      <td><div class="mc">${whole}${mcNote}</div></td>
+      <td>
+        <div class="mc">${whole}${mcNote}</div>
+        <div class="clock-ctrl">
+          <label>floor clock</label>
+          <input type="number" class="clock-input${clockPct !== 100 ? ' overclocked' : ''}" value="${clockPct}" min="1" max="250" step="1"
+            onclick="this.select()"
+            onchange="setOverclock('${esc(f.product)}', this.value)">
+          <label>%</label>
+        </div>
+      </td>
     </tr>`);
   }
 
-  // Intake row — at the bottom (ground floor)
-  const importedNeeded = S.imports.filter(i => rates[i] > 0);
+  // Floor 0 — ground floor, imported items enter here
+  const importedRates = {};
+  for (const f of floors) {
+    for (const inp of f.inputs) {
+      if (inp.imported) importedRates[inp.item] = (importedRates[inp.item] || 0) + inp.rate;
+    }
+  }
+  const importedNeeded = Object.entries(importedRates).filter(([, r]) => r > 0).sort(([a], [b]) => a.localeCompare(b));
   if (importedNeeded.length) {
-    const inputsHtml = importedNeeded.map(i =>
-      `<div class="inp"><div class="dot imported"></div><span>${esc(i)}</span><span class="inp-rate">${fmtR(rates[i])}/min</span></div>`
+    const inputsHtml = importedNeeded.map(([item, rate]) =>
+      `<div class="inp"><div class="dot imported"></div><span>${esc(item)}</span><span class="inp-rate">${fmtR(rate)}/min</span></div>`
     ).join('');
     rows.push(`<tr class="floor-intake">
-      <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">Intake</div></td>
-      <td><div class="prod-name" style="color:var(--green)">Factory Inputs</div><div class="prod-rate">Base level — items fed onto conveyor bus</div></td>
+      <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">0</div></td>
+      <td><div class="prod-name" style="color:var(--green)">Factory Inputs</div><div class="prod-rate">Ground floor — imported items enter here</div></td>
       <td colspan="2"><div class="inputs">${inputsHtml}</div></td>
       <td></td>
     </tr>`);
@@ -619,6 +653,12 @@ function addOutput() {
   autoGenerate();
 }
 function removeOutput(i) { S.outputs.splice(i, 1); renderOutputs(); autoGenerate(); }
+
+function setOverclock(product, value) {
+  const pct = Math.min(250, Math.max(1, Math.round(parseFloat(value) || 100)));
+  if (pct === 100) delete S.overclocks[product]; else S.overclocks[product] = pct;
+  generate();
+}
 
 function editOutputRate(i) {
   const rateSpan = document.querySelectorAll('#outputs-list .entry')[i]?.querySelector('.rate');
