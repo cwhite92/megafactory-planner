@@ -140,7 +140,7 @@ function planFactory({
     visited.add(item);
     const r = chooseBestRecipe(item);
     if (!r) {
-      warn(`Your factory needs "${item}". Either add a recipe for it or mark it as an imported item.`, item);
+      warn(`Your factory needs "${item}". Add it as an import, add a recipe for it, or choose an alt recipe to eliminate the need for it.`, item);
       continue;
     }
     chosenRecipes[item] = r;
