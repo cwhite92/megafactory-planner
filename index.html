@@ -178,6 +178,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <h2>Conveyor Bus</h2>
       <p class="hint">Highest belt mark available. The planner picks the fewest belts using this mark or lower.</p>
       <div id="belt-selector" class="belt-marks"></div>
+      <label class="mtoggle" style="margin-top:8px">
+        <input type="checkbox" id="belt-uniform-toggle" onchange="setBeltUniform(this.checked)">
+        Use selected mark only (no mixing)
+      </label>
     </section>
 
     <section class="panel">
@@ -257,6 +261,7 @@ const S = {
   machines: new Set(),
   overclocks: {},
   beltMark: 6,
+  beltUniform: false,
 };
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
@@ -293,6 +298,7 @@ function saveToUrl() {
   const parts = [];
   const enc = encodeURIComponent;
   parts.push(`beltMark=${S.beltMark}`);
+  if (S.beltUniform) parts.push('beltUniform=1');
   for (const item of S.imports)
     parts.push(`inputs[]=${enc(item)}`);
   for (const { item, rate } of S.outputs)
@@ -308,12 +314,13 @@ function saveToUrl() {
 
 function loadFromUrl() {
   const p = new URLSearchParams(location.search);
-  if (!['inputs[]','outputs[]','machines[]','base_recipes[]','alt_recipes[]','beltMark'].some(k => p.has(k))) return;
+  if (!['inputs[]','outputs[]','machines[]','base_recipes[]','alt_recipes[]','beltMark','beltUniform'].some(k => p.has(k))) return;
 
   if (p.has('beltMark')) {
     const m = parseInt(p.get('beltMark'));
     if (m >= 1 && m <= 6) S.beltMark = m;
   }
+  S.beltUniform = p.get('beltUniform') === '1';
 
   if (p.has('inputs[]'))
     S.imports = p.getAll('inputs[]').filter(v => ALL_ITEMS.has(v));
@@ -354,13 +361,16 @@ function plan() {
 // ── BELT HELPERS ──────────────────────────────────────────────────────────────
 function calcBelts(rate) {
   if (rate <= 0) return { count: 0, mark: 1 };
+  const chosen = BELT_MARKS.find(b => b.mark === S.beltMark);
+  if (S.beltUniform) {
+    return { count: Math.ceil(rate / chosen.capacity), mark: chosen.mark };
+  }
   const available = BELT_MARKS.filter(b => b.mark <= S.beltMark);
   // Use the lowest mark whose capacity covers the full rate in one belt
   const single = available.find(b => b.capacity >= rate);
   if (single) return { count: 1, mark: single.mark };
   // Rate exceeds even the highest available mark — use multiple of the best
-  const best = available.at(-1);
-  return { count: Math.ceil(rate / best.capacity), mark: best.mark };
+  return { count: Math.ceil(rate / chosen.capacity), mark: chosen.mark };
 }
 
 function beltTag({ count, mark }) {
@@ -372,11 +382,17 @@ function renderBeltSelector() {
     <button class="belt-btn${S.beltMark === b.mark ? ' active' : ''}" onclick="setBeltMark(${b.mark})">
       MK${b.mark}<small>${b.capacity}/m</small>
     </button>`).join('');
+  document.getElementById('belt-uniform-toggle').checked = S.beltUniform;
 }
 
 function setBeltMark(mark) {
   S.beltMark = mark;
   renderBeltSelector();
+  autoGenerate();
+}
+
+function setBeltUniform(val) {
+  S.beltUniform = val;
   autoGenerate();
 }
 
@@ -628,10 +644,9 @@ function renderFloorPlan(result) {
     const byHtml = f.byproducts.length
       ? `<div class="byproduct">+ ${f.byproducts.map(b => `${esc(b.item)} ${fmtR(b.rate)}/min`).join(', ')} (byproduct)</div>`
       : '';
-    const inpHtml = f.inputs.map(i => {
-      const belt = !i.imported ? beltTag(calcBelts(i.rate)) : '';
-      return `<div class="inp"><div class="dot ${i.imported ? 'imported' : 'bus'}"></div><span>${esc(i.item)}</span><span class="inp-rate">${fmtR(i.rate)}/min${belt}</span></div>`;
-    }).join('');
+    const inpHtml = f.inputs.map(i =>
+      `<div class="inp"><div class="dot ${i.imported ? 'imported' : 'bus'}"></div><span>${esc(i.item)}</span><span class="inp-rate">${fmtR(i.rate)}/min${beltTag(calcBelts(i.rate))}</span></div>`
+    ).join('');
     const clockPct = S.overclocks[f.product] || 100;
     const adjustedMC = f.machineCount * 100 / clockPct;
     const whole = Math.ceil(adjustedMC);
