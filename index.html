@@ -119,6 +119,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .recipe-search:focus{border-color:var(--orange)}
 .recipe-controls{display:flex;gap:6px;align-items:center;margin-bottom:6px}
 .recipe-controls .recipe-search{margin-bottom:0}
+.belt-marks{display:flex;gap:4px;flex-wrap:wrap}
+.belt-btn{background:var(--card2);border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;font-weight:600;padding:5px 0;cursor:pointer;flex:1;text-align:center;line-height:1.3}
+.belt-btn:hover{border-color:var(--orange);color:var(--orange)}
+.belt-btn.active{background:var(--orange);color:#000;border-color:var(--orange)}
+.belt-btn small{display:block;font-size:9px;font-weight:400}
+.belt-badge{display:inline-block;background:rgba(59,130,246,.15);color:var(--blue);border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700;letter-spacing:.2px;white-space:nowrap;margin-left:5px}
 </style>
 </head>
 <body>
@@ -166,6 +172,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <input type="text" id="imp-item" class="flex1" placeholder="Item name…" list="items-dl" autocomplete="off">
         <button onclick="addImport()">Add</button>
       </div>
+    </section>
+
+    <section class="panel">
+      <h2>Conveyor Bus</h2>
+      <p class="hint">Highest belt mark available. The planner picks the fewest belts using this mark or lower.</p>
+      <div id="belt-selector" class="belt-marks"></div>
     </section>
 
     <section class="panel">
@@ -229,12 +241,22 @@ let ALL_RECIPES = [];
 let ALL_MACHINES = [];
 let ALL_ITEMS = new Set();
 
+const BELT_MARKS = [
+  { mark: 1, capacity: 60 },
+  { mark: 2, capacity: 120 },
+  { mark: 3, capacity: 270 },
+  { mark: 4, capacity: 480 },
+  { mark: 5, capacity: 780 },
+  { mark: 6, capacity: 1200 },
+];
+
 const S = {
   outputs: [],
   imports: [],
   selectedRecipes: new Set(),
   machines: new Set(),
   overclocks: {},
+  beltMark: 6,
 };
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
@@ -258,6 +280,7 @@ const S = {
 
   renderOutputs();
   renderImports();
+  renderBeltSelector();
   renderMachines();
   renderBaseRecipes();
   renderAltRecipes();
@@ -269,6 +292,7 @@ const S = {
 function saveToUrl() {
   const parts = [];
   const enc = encodeURIComponent;
+  parts.push(`beltMark=${S.beltMark}`);
   for (const item of S.imports)
     parts.push(`inputs[]=${enc(item)}`);
   for (const { item, rate } of S.outputs)
@@ -284,7 +308,12 @@ function saveToUrl() {
 
 function loadFromUrl() {
   const p = new URLSearchParams(location.search);
-  if (!['inputs[]','outputs[]','machines[]','base_recipes[]','alt_recipes[]'].some(k => p.has(k))) return;
+  if (!['inputs[]','outputs[]','machines[]','base_recipes[]','alt_recipes[]','beltMark'].some(k => p.has(k))) return;
+
+  if (p.has('beltMark')) {
+    const m = parseInt(p.get('beltMark'));
+    if (m >= 1 && m <= 6) S.beltMark = m;
+  }
 
   if (p.has('inputs[]'))
     S.imports = p.getAll('inputs[]').filter(v => ALL_ITEMS.has(v));
@@ -320,6 +349,30 @@ function plan() {
     imports: S.imports,
     outputs: S.outputs,
   });
+}
+
+// ── BELT HELPERS ──────────────────────────────────────────────────────────────
+function calcBelts(rate) {
+  if (rate <= 0) return { count: 0, mark: S.beltMark };
+  const best = BELT_MARKS.filter(b => b.mark <= S.beltMark).at(-1);
+  return { count: Math.ceil(rate / best.capacity), mark: best.mark };
+}
+
+function beltTag({ count, mark }) {
+  return `<span class="belt-badge">${count}&times;MK${mark}</span>`;
+}
+
+function renderBeltSelector() {
+  document.getElementById('belt-selector').innerHTML = BELT_MARKS.map(b => `
+    <button class="belt-btn${S.beltMark === b.mark ? ' active' : ''}" onclick="setBeltMark(${b.mark})">
+      MK${b.mark}<small>${b.capacity}/m</small>
+    </button>`).join('');
+}
+
+function setBeltMark(mark) {
+  S.beltMark = mark;
+  renderBeltSelector();
+  autoGenerate();
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
@@ -570,9 +623,10 @@ function renderFloorPlan(result) {
     const byHtml = f.byproducts.length
       ? `<div class="byproduct">+ ${f.byproducts.map(b => `${esc(b.item)} ${fmtR(b.rate)}/min`).join(', ')} (byproduct)</div>`
       : '';
-    const inpHtml = f.inputs.map(i =>
-      `<div class="inp"><div class="dot ${i.imported ? 'imported' : 'bus'}"></div><span>${esc(i.item)}</span><span class="inp-rate">${fmtR(i.rate)}/min</span></div>`
-    ).join('');
+    const inpHtml = f.inputs.map(i => {
+      const belt = !i.imported ? beltTag(calcBelts(i.rate)) : '';
+      return `<div class="inp"><div class="dot ${i.imported ? 'imported' : 'bus'}"></div><span>${esc(i.item)}</span><span class="inp-rate">${fmtR(i.rate)}/min${belt}</span></div>`;
+    }).join('');
     const clockPct = S.overclocks[f.product] || 100;
     const adjustedMC = f.machineCount * 100 / clockPct;
     const whole = Math.ceil(adjustedMC);
@@ -583,7 +637,7 @@ function renderFloorPlan(result) {
       <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">${f.num}</div></td>
       <td>
         <div class="prod-name">${esc(f.product)}</div>
-        <div class="prod-rate">${fmtR(f.outputRate)}/min${byHtml}</div>
+        <div class="prod-rate">${fmtR(f.outputRate)}/min${beltTag(calcBelts(f.outputRate))}${byHtml}</div>
       </td>
       <td>
         <div class="recipe-cell">${esc(f.recipe.name)}${f.recipe.isAlt ? '<span class="alt-badge">Alt</span>' : ''}</div>
