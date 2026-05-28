@@ -353,8 +353,13 @@ function plan() {
 
 // ── BELT HELPERS ──────────────────────────────────────────────────────────────
 function calcBelts(rate) {
-  if (rate <= 0) return { count: 0, mark: S.beltMark };
-  const best = BELT_MARKS.filter(b => b.mark <= S.beltMark).at(-1);
+  if (rate <= 0) return { count: 0, mark: 1 };
+  const available = BELT_MARKS.filter(b => b.mark <= S.beltMark);
+  // Use the lowest mark whose capacity covers the full rate in one belt
+  const single = available.find(b => b.capacity >= rate);
+  if (single) return { count: 1, mark: single.mark };
+  // Rate exceeds even the highest available mark — use multiple of the best
+  const best = available.at(-1);
   return { count: Math.ceil(rate / best.capacity), mark: best.mark };
 }
 
