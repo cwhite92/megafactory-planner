@@ -1,38 +1,5 @@
 'use strict';
 
-function parseRecipes(text) {
-  const out = [];
-  for (const raw of text.split('\n')) {
-    const line = raw.trim();
-    if (!line || line.startsWith('#')) continue;
-    const isAlt = line.startsWith('[Alt]');
-    const rest = isAlt ? line.slice(5).trim() : line;
-    const ci = rest.indexOf(':');
-    if (ci === -1) continue;
-    const lhs = rest.slice(0, ci).trim();
-    const rhs = rest.slice(ci + 1).trim();
-    const mm = lhs.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-    if (!mm) continue;
-    const recipeName = mm[1].trim();
-    const machine = mm[2].trim();
-    const ai = rhs.indexOf('->');
-    if (ai === -1) continue;
-    const inpStr = rhs.slice(0, ai).trim();
-    const outStr = rhs.slice(ai + 2).trim();
-    function pi(s) {
-      if (s === '(none)') return [];
-      return s.split('+').map(p => {
-        const m = p.trim().match(/^(.+?)\s+([\d.]+)\/min$/);
-        return m ? { item: m[1].trim(), rate: parseFloat(m[2]) } : null;
-      }).filter(Boolean);
-    }
-    const inputs = pi(inpStr);
-    const outputs = pi(outStr);
-    if (outputs.length) out.push({ name: recipeName, machine, isAlt, inputs, outputs });
-  }
-  return out;
-}
-
 // Plans a megafactory layout.
 //
 // params:
@@ -254,5 +221,5 @@ function fmtRate(n) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { parseRecipes, planFactory };
+  module.exports = { planFactory };
 }

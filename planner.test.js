@@ -1,33 +1,35 @@
 'use strict';
 
-const { parseRecipes, planFactory } = require('./planner.js');
+const { planFactory } = require('./planner.js');
 
-const RECIPE_TEXT = `
-# Standard recipes
-Cable (Constructor): Wire 60/min -> Cable 30/min
-Wire (Constructor): Copper Ingot 15/min -> Wire 30/min
-Copper Ingot (Smelter): Copper Ore 30/min -> Copper Ingot 30/min
-Iron Ingot (Smelter): Iron Ore 30/min -> Iron Ingot 30/min
-Iron Plate (Constructor): Iron Ingot 30/min -> Iron Plate 20/min
-Iron Rod (Constructor): Iron Ingot 15/min -> Iron Rod 15/min
-Screws (Constructor): Iron Rod 10/min -> Screws 40/min
-Reinforced Iron Plate (Assembler): Iron Plate 30/min + Screws 60/min -> Reinforced Iron Plate 5/min
-Circuit Board (Assembler): Copper Sheet 15/min + Plastic 30/min -> Circuit Board 7.5/min
-Copper Sheet (Constructor): Copper Ingot 20/min -> Copper Sheet 10/min
-Alumina Solution (Refinery): Bauxite 120/min + Water 180/min -> Alumina Solution 120/min + Silica 50/min
-Aluminum Scrap (Refinery): Alumina Solution 240/min + Coal 120/min -> Aluminum Scrap 360/min + Water 120/min
-Aluminum Ingot (Foundry): Aluminum Scrap 90/min + Silica 75/min -> Aluminum Ingot 60/min
-Silica (Constructor): Raw Quartz 22.5/min -> Silica 37.5/min
-Encased Uranium Cell (Blender): Uranium Ore 50/min + Concrete 15/min + Sulfuric Acid 40/min -> Encased Uranium Cell 25/min + Sulfuric Acid 10/min
-Sulfuric Acid (Refinery): Sulfur 50/min + Water 50/min -> Sulfuric Acid 50/min
-# Alt recipes
-[Alt] Fused Wire (Assembler): Copper Ingot 12/min + Caterium Ingot 3/min -> Wire 90/min
-[Alt] Stitched Iron Plate (Assembler): Iron Plate 18.75/min + Wire 37.5/min -> Reinforced Iron Plate 5.625/min
-[Alt] Recycled Plastic (Refinery): Rubber 30/min + Fuel 30/min -> Plastic 60/min
-[Alt] Recycled Rubber (Refinery): Plastic 30/min + Fuel 30/min -> Rubber 60/min
-`;
+function r(name, machine, isAlt, inputs, outputs) {
+  return { name, machine, isAlt, icon: null, inputs, outputs };
+}
+function io(item, rate) { return { item, rate }; }
 
-const ALL_RECIPES = parseRecipes(RECIPE_TEXT);
+const ALL_RECIPES = [
+  r('Cable',                  'Constructor', false, [io('Wire', 60)],                                          [io('Cable', 30)]),
+  r('Wire',                   'Constructor', false, [io('Copper Ingot', 15)],                                  [io('Wire', 30)]),
+  r('Copper Ingot',           'Smelter',     false, [io('Copper Ore', 30)],                                    [io('Copper Ingot', 30)]),
+  r('Iron Ingot',             'Smelter',     false, [io('Iron Ore', 30)],                                      [io('Iron Ingot', 30)]),
+  r('Iron Plate',             'Constructor', false, [io('Iron Ingot', 30)],                                    [io('Iron Plate', 20)]),
+  r('Iron Rod',               'Constructor', false, [io('Iron Ingot', 15)],                                    [io('Iron Rod', 15)]),
+  r('Screws',                 'Constructor', false, [io('Iron Rod', 10)],                                      [io('Screws', 40)]),
+  r('Reinforced Iron Plate',  'Assembler',   false, [io('Iron Plate', 30), io('Screws', 60)],                  [io('Reinforced Iron Plate', 5)]),
+  r('Circuit Board',          'Assembler',   false, [io('Copper Sheet', 15), io('Plastic', 30)],               [io('Circuit Board', 7.5)]),
+  r('Copper Sheet',           'Constructor', false, [io('Copper Ingot', 20)],                                  [io('Copper Sheet', 10)]),
+  r('Alumina Solution',       'Refinery',    false, [io('Bauxite', 120), io('Water', 180)],                    [io('Alumina Solution', 120), io('Silica', 50)]),
+  r('Aluminum Scrap',         'Refinery',    false, [io('Alumina Solution', 240), io('Coal', 120)],            [io('Aluminum Scrap', 360), io('Water', 120)]),
+  r('Aluminum Ingot',         'Foundry',     false, [io('Aluminum Scrap', 90), io('Silica', 75)],              [io('Aluminum Ingot', 60)]),
+  r('Silica',                 'Constructor', false, [io('Raw Quartz', 22.5)],                                  [io('Silica', 37.5)]),
+  r('Encased Uranium Cell',   'Blender',     false, [io('Uranium Ore', 50), io('Concrete', 15), io('Sulfuric Acid', 40)], [io('Encased Uranium Cell', 25), io('Sulfuric Acid', 10)]),
+  r('Sulfuric Acid',          'Refinery',    false, [io('Sulfur', 50), io('Water', 50)],                       [io('Sulfuric Acid', 50)]),
+  r('Fused Wire',             'Assembler',   true,  [io('Copper Ingot', 12), io('Caterium Ingot', 3)],         [io('Wire', 90)]),
+  r('Stitched Iron Plate',    'Assembler',   true,  [io('Iron Plate', 18.75), io('Wire', 37.5)],               [io('Reinforced Iron Plate', 5.625)]),
+  r('Recycled Plastic',       'Refinery',    true,  [io('Rubber', 30), io('Fuel', 30)],                        [io('Plastic', 60)]),
+  r('Recycled Rubber',        'Refinery',    true,  [io('Plastic', 30), io('Fuel', 30)],                       [io('Rubber', 60)]),
+];
+
 const BASE = ALL_RECIPES.filter(r => !r.isAlt);
 const ALTS = ALL_RECIPES.filter(r => r.isAlt);
 

@@ -236,7 +236,6 @@ tr:hover td{background:rgba(255,255,255,.015)}
 <datalist id="items-dl"></datalist>
 
 <script src="planner.js"></script>
-<script src="recipes-data.js"></script>
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let ALL_RECIPES = [];
@@ -263,8 +262,8 @@ const S = {
 };
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-(function init() {
-  ALL_RECIPES = parseRecipes(RECIPE_DATA);
+(async function init() {
+  ALL_RECIPES = await fetch('recipes.json').then(r => r.json());
   ALL_MACHINES = [...new Set(ALL_RECIPES.map(r => r.machine))].sort();
 
   S.imports = ['Iron Ingot','Copper Ingot','Steel Ingot','Aluminum Ingot','Plastic','Rubber','Raw Quartz','Limestone','Nitrogen Gas','Water','Sulfur','Concrete'];
