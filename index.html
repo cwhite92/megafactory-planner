@@ -57,7 +57,7 @@ main{overflow:auto;padding:20px}
 .warn-box{background:var(--yellow-bg);border:1px solid var(--yellow);border-radius:6px;padding:10px 14px;margin-bottom:16px}
 .warn-box h3{font-size:11px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
 .warn-box li{color:var(--yellow);font-size:12px;margin-left:16px;margin-bottom:3px;line-height:1.4}
-.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative}
 .table-wrap h2{padding:10px 16px;font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)}
 table{width:100%;border-collapse:collapse}
 th{background:var(--bg);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border)}
@@ -325,6 +325,119 @@ function toggleAllAlts() {
   autoGenerate();
 }
 
+// ── FLOW GRAPH ────────────────────────────────────────────────────────────────
+
+function buildGraphLayout(floors) {
+  const producedBy = {};
+  for (const f of floors) producedBy[f.product] = f;
+
+  // Group all consumers by their source floor
+  const groupMap = new Map(); // source floor num -> Set of consumer floor nums
+  for (const f of floors) {
+    for (const inp of f.inputs) {
+      if (!inp.imported && producedBy[inp.item]) {
+        const src = producedBy[inp.item].num;
+        if (!groupMap.has(src)) groupMap.set(src, new Set());
+        groupMap.get(src).add(f.num);
+      }
+    }
+  }
+
+  if (!groupMap.size) return { groups: [], numLanes: 0 };
+
+  const groups = [];
+  for (const [src, consSet] of groupMap) {
+    const consumers = [...consSet].sort((a, b) => a - b);
+    groups.push({ source: src, consumers, maxConsumer: consumers[consumers.length - 1] });
+  }
+
+  // Longer spans → outer (lower-numbered) lanes
+  groups.sort((a, b) => (b.maxConsumer - b.source) - (a.maxConsumer - a.source));
+
+  const slots = [];
+  for (const g of groups) {
+    let l = 0;
+    for (;;) {
+      if (!slots[l]) slots[l] = [];
+      if (!slots[l].some(r => r.lo <= g.maxConsumer && r.hi >= g.source)) {
+        slots[l].push({ lo: g.source, hi: g.maxConsumer });
+        g.lane = l;
+        break;
+      }
+      l++;
+    }
+  }
+
+  return { groups, numLanes: slots.length };
+}
+
+function renderFlowGraph(groups, numLanes, graphW) {
+  const old = document.getElementById('flow-graph');
+  if (old) old.remove();
+  if (!groups.length) return;
+
+  const ns = 'http://www.w3.org/2000/svg';
+  const wrap = document.querySelector('.table-wrap');
+  const tbody = document.getElementById('tbody');
+  const wrapRect = wrap.getBoundingClientRect();
+  const tbodyRect = tbody.getBoundingClientRect();
+  const tbodyTop = tbodyRect.top - wrapRect.top;
+
+  // Track top + height per row so we can split source (output) and consumer (input) y positions
+  const rowInfo = {};
+  for (const tr of tbody.querySelectorAll('tr')) {
+    const numEl = tr.querySelector('.floor-num');
+    if (!numEl) continue;
+    const n = parseInt(numEl.textContent);
+    if (isNaN(n)) continue;
+    const r = tr.getBoundingClientRect();
+    rowInfo[n] = { top: r.top - tbodyRect.top, h: r.height };
+  }
+  // Outputs leave near the top of the row; inputs arrive near the bottom
+  const srcY  = n => rowInfo[n] ? rowInfo[n].top + rowInfo[n].h * 0.25 : null;
+  const consY = n => rowInfo[n] ? rowInfo[n].top + rowInfo[n].h * 0.75 : null;
+
+  const svg = document.createElementNS(ns, 'svg');
+  svg.id = 'flow-graph';
+  svg.setAttribute('width', graphW);
+  svg.setAttribute('height', tbodyRect.height);
+  svg.style.cssText = `position:absolute;left:0;top:${tbodyTop}px;pointer-events:none`;
+
+  const PALETTE = ['#3b82f6','#f97316','#a855f7','#22c55e','#eab308','#06b6d4','#ef4444','#ec4899'];
+  const LW = 12, PAD = 4, R = 3;
+
+  const mk = (tag, attrs) => {
+    const el = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  };
+
+  for (const g of groups) {
+    const x = PAD + g.lane * LW + LW / 2;
+    const yTop = consY(g.maxConsumer); // topmost consumer's input point (near bottom of its row)
+    const yBot = srcY(g.source);       // source's output point (near top of its row)
+    if (yTop == null || yBot == null) continue;
+    const col = PALETTE[g.lane % PALETTE.length];
+
+    // Single vertical trunk connecting source output to topmost consumer input
+    svg.appendChild(mk('line', { x1: x, y1: yTop, x2: x, y2: yBot, stroke: col, 'stroke-width': 1.5 }));
+
+    // Source: elbow + dot at output position (near top of row)
+    svg.appendChild(mk('line', { x1: x, y1: yBot, x2: graphW - 1, y2: yBot, stroke: col, 'stroke-width': 1.5 }));
+    svg.appendChild(mk('circle', { cx: x, cy: yBot, r: R, fill: col }));
+
+    // Each consumer: elbow + dot at input position (near bottom of row)
+    for (const cNum of g.consumers) {
+      const y = consY(cNum);
+      if (y == null) continue;
+      svg.appendChild(mk('line', { x1: x, y1: y, x2: graphW - 1, y2: y, stroke: col, 'stroke-width': 1.5 }));
+      svg.appendChild(mk('circle', { cx: x, cy: y, r: R, fill: col }));
+    }
+  }
+
+  wrap.appendChild(svg);
+}
+
 function renderFloorPlan(result) {
   const { floors, warnings, rates } = result;
   document.getElementById('placeholder').style.display = 'none';
@@ -346,6 +459,9 @@ function renderFloorPlan(result) {
     : '';
 
   const tbody = document.getElementById('tbody');
+  const { groups, numLanes } = buildGraphLayout(floors);
+  const graphW = numLanes > 0 ? 4 + numLanes * 12 + 4 : 0;
+  const floorPad = graphW > 0 ? graphW + 6 : 12;
   const rows = [];
 
   // Production floors — highest floor first (top of building at top of table)
@@ -361,7 +477,7 @@ function renderFloorPlan(result) {
     const lastPct = partial > 0.0001 ? partial * 100 : null;
     const mcNote = lastPct ? `<small>last at ${lastPct.toFixed(1)}%</small>` : '';
     rows.push(`<tr class="${f.isDesired ? 'floor-output' : ''}">
-      <td class="col-floor"><div class="floor-num">${f.num}</div></td>
+      <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">${f.num}</div></td>
       <td>
         <div class="prod-name">${esc(f.product)}</div>
         <div class="prod-rate">${fmtR(f.outputRate)}/min${byHtml}</div>
@@ -382,7 +498,7 @@ function renderFloorPlan(result) {
       `<div class="inp"><div class="dot imported"></div><span>${esc(i)}</span><span class="inp-rate">${fmtR(rates[i])}/min</span></div>`
     ).join('');
     rows.push(`<tr class="floor-intake">
-      <td class="col-floor"><div class="floor-num">Intake</div></td>
+      <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">Intake</div></td>
       <td><div class="prod-name" style="color:var(--green)">Factory Inputs</div><div class="prod-rate">Base level — items fed onto conveyor bus</div></td>
       <td colspan="2"><div class="inputs">${inputsHtml}</div></td>
       <td></td>
@@ -391,6 +507,8 @@ function renderFloorPlan(result) {
 
   if (!rows.length) rows.push(`<tr><td colspan="5" style="text-align:center;color:var(--muted2);padding:20px">No floors to display.</td></tr>`);
   tbody.innerHTML = rows.join('');
+  document.querySelector('.table-wrap th:first-child').style.paddingLeft = floorPad + 'px';
+  renderFlowGraph(groups, numLanes, graphW);
 }
 
 function esc(s) {
