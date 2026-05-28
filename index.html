@@ -105,8 +105,6 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .clock-input:focus{border-bottom-color:var(--orange);color:var(--orange)}
 .clock-input.overclocked{color:var(--orange)}
 .clock-input::-webkit-outer-spin-button,.clock-input::-webkit-inner-spin-button{-webkit-appearance:none}
-.preset-btn{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer;margin-bottom:8px}
-.preset-btn:hover{border-color:var(--orange);color:var(--orange)}
 .recipe-list{display:flex;flex-direction:column;gap:1px;max-height:180px;overflow-y:auto;margin-top:2px}
 .recipe-list::-webkit-scrollbar{width:4px}
 .recipe-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
@@ -166,8 +164,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <section class="panel">
       <h2>Imported Items</h2>
       <p class="hint">Items shipped in from outside — won't get a production floor.</p>
-      <button class="preset-btn" onclick="loadPreset()">Load sample (Computer factory)</button>
-      <div id="imports-list" class="entry-list"></div>
+<div id="imports-list" class="entry-list"></div>
       <div class="add-row">
         <input type="text" id="imp-item" class="flex1" placeholder="Item name…" list="items-dl" autocomplete="off">
         <button onclick="addImport()">Add</button>
@@ -784,19 +781,6 @@ function autoGenerate() {
     return;
   }
   generate();
-}
-
-function loadPreset() {
-  S.outputs = [{ item: 'Computer', rate: 5 }];
-  S.imports = ['Iron Ore', 'Copper Ore', 'Coal', 'Limestone', 'Crude Oil', 'Caterium Ore', 'Water'];
-  S.machines = new Set(ALL_MACHINES.filter(m => m !== 'Converter'));
-  S.selectedRecipes = new Set(ALL_RECIPES.filter(r => !r.isAlt).map(r => r.name));
-  renderOutputs();
-  renderImports();
-  renderMachines();
-  renderBaseRecipes();
-  renderAltRecipes();
-  autoGenerate();
 }
 
 // ── EXPORT / IMPORT ──────────────────────────────────────────────────────────
