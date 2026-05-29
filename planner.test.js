@@ -268,6 +268,53 @@ test('outputRate for intermediate floors matches actual demand from consumers', 
   assert(wire.outputRate >= cableWireInput.rate, 'Wire outputRate must cover Cable demand');
 });
 
+test('beltSettings: adds belt info to floor outputs, inputs, and importedItems', () => {
+  // Cable 30/min → Wire 60/min → Copper Ingot 30/min → Copper Ore 30/min (imported)
+  const { floors, importedItems } = planFactory({
+    availableRecipes: pick('Cable', 'Wire', 'Copper Ingot'),
+    beltSettings: { beltMark: 6, beltUniform: false },
+    imports: ['Copper Ore'],
+    outputs: [{ item: 'Cable', rate: 30 }],
+  });
+  const cable = floors.find(f => f.product === 'Cable');
+  // 30/min fits on 1×MK1 (cap 60)
+  assert(cable.outputBelts != null, 'outputBelts should be set');
+  assertEqual(cable.outputBelts.count, 1);
+  assertEqual(cable.outputBelts.mark, 1);
+  // Wire input to Cable is 60/min → exactly fills 1×MK1
+  const wireInp = cable.inputs.find(i => i.item === 'Wire');
+  assert(wireInp.belts != null, 'input belts should be set');
+  assertEqual(wireInp.belts.count, 1);
+  assertEqual(wireInp.belts.mark, 1);
+  // Copper Ore is imported at 30/min total → 1×MK1
+  const copperOre = importedItems.find(i => i.item === 'Copper Ore');
+  assert(copperOre, 'Copper Ore should appear in importedItems');
+  assertEqual(copperOre.belts.count, 1);
+  assertEqual(copperOre.belts.mark, 1);
+});
+
+test('beltSettings: null belt fields when beltSettings omitted', () => {
+  const { floors, importedItems } = plan({
+    imports: ['Copper Ore'],
+    outputs: [{ item: 'Cable', rate: 30 }],
+  });
+  const cable = floors.find(f => f.product === 'Cable');
+  assertEqual(cable.outputBelts, null, 'outputBelts should be null without beltSettings');
+  assert(cable.inputs.every(i => i.belts === null), 'input belts should be null without beltSettings');
+  assert(importedItems.every(i => i.belts === null), 'importedItems belts should be null without beltSettings');
+});
+
+test('availableMachines filters out recipes whose machine is disabled', () => {
+  // Wire is made in a Constructor; disabling Constructor means no Wire recipe is available.
+  const { warnings } = planFactory({
+    availableRecipes: BASE,
+    availableMachines: ['Smelter', 'Assembler', 'Refinery', 'Foundry', 'Blender'],
+    imports: ['Copper Ore'],
+    outputs: [{ item: 'Wire', rate: 30 }],
+  });
+  assert(warnings.some(w => w.includes('Wire')), `expected Wire warning when Constructor is disabled, got: ${warnings}`);
+});
+
 // ── summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

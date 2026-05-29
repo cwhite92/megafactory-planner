@@ -245,14 +245,6 @@ let ALL_RECIPES = [];
 let ALL_MACHINES = [];
 let ALL_ITEMS = new Set();
 
-const BELT_MARKS = [
-  { mark: 1, capacity: 60 },
-  { mark: 2, capacity: 120 },
-  { mark: 3, capacity: 270 },
-  { mark: 4, capacity: 480 },
-  { mark: 5, capacity: 780 },
-  { mark: 6, capacity: 1200 },
-];
 
 const S = {
   outputs: [],
@@ -352,29 +344,18 @@ function loadFromUrl() {
 // ── PLANNING ─────────────────────────────────────────────────────────────────
 function plan() {
   return planFactory({
-    availableRecipes: ALL_RECIPES.filter(r => S.selectedRecipes.has(r.name) && S.machines.has(r.machine)),
+    availableRecipes: ALL_RECIPES.filter(r => S.selectedRecipes.has(r.name)),
+    availableMachines: [...S.machines],
+    beltSettings: { beltMark: S.beltMark, beltUniform: S.beltUniform },
     imports: S.imports,
     outputs: S.outputs,
   });
 }
 
 // ── BELT HELPERS ──────────────────────────────────────────────────────────────
-function calcBelts(rate) {
-  if (rate <= 0) return { count: 0, mark: 1 };
-  const chosen = BELT_MARKS.find(b => b.mark === S.beltMark);
-  if (S.beltUniform) {
-    return { count: Math.ceil(rate / chosen.capacity), mark: chosen.mark };
-  }
-  const available = BELT_MARKS.filter(b => b.mark <= S.beltMark);
-  // Use the lowest mark whose capacity covers the full rate in one belt
-  const single = available.find(b => b.capacity >= rate);
-  if (single) return { count: 1, mark: single.mark };
-  // Rate exceeds even the highest available mark — use multiple of the best
-  return { count: Math.ceil(rate / chosen.capacity), mark: chosen.mark };
-}
-
-function beltTag({ count, mark }) {
-  return `<span class="belt-badge">${count}&times;MK${mark}</span>`;
+function beltTag(belts) {
+  if (!belts) return '';
+  return `<span class="belt-badge">${belts.count}&times;MK${belts.mark}</span>`;
 }
 
 function renderBeltSelector() {
@@ -709,7 +690,7 @@ function renderFlowGraph(groups, numLanes, graphW) {
 }
 
 function renderFloorPlan(result) {
-  const { floors, warnings, rates } = result;
+  const { floors, warnings, rates, importedItems } = result;
   document.getElementById('placeholder').style.display = 'none';
   document.getElementById('result').style.display = 'block';
 
@@ -740,7 +721,7 @@ function renderFloorPlan(result) {
       ? `<div class="byproduct">+ ${f.byproducts.map(b => `${esc(b.item)} ${fmtR(b.rate)}/min`).join(', ')} (byproduct)</div>`
       : '';
     const inpHtml = f.inputs.map(i =>
-      `<div class="inp"><div class="dot ${i.imported ? 'imported' : 'bus'}"></div>${itemIconSm(i.item)}<span>${esc(i.item)}</span><span class="inp-rate">${fmtR(i.rate)}/min${beltTag(calcBelts(i.rate))}</span></div>`
+      `<div class="inp"><div class="dot ${i.imported ? 'imported' : 'bus'}"></div>${itemIconSm(i.item)}<span>${esc(i.item)}</span><span class="inp-rate">${fmtR(i.rate)}/min${beltTag(i.belts)}</span></div>`
     ).join('');
     const clockPct = S.overclocks[f.product] || 100;
     const adjustedMC = f.machineCount * 100 / clockPct;
@@ -752,7 +733,7 @@ function renderFloorPlan(result) {
       <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">${f.num}</div></td>
       <td>
         <div class="prod-name">${itemIcon(f.product)}${esc(f.product)}</div>
-        <div class="prod-rate">${fmtR(f.outputRate)}/min${beltTag(calcBelts(f.outputRate))}${byHtml}</div>
+        <div class="prod-rate">${fmtR(f.outputRate)}/min${beltTag(f.outputBelts)}${byHtml}</div>
       </td>
       <td>
         <div class="recipe-cell">${esc(f.recipe.name)}${f.recipe.isAlt ? '<span class="alt-badge">Alt</span>' : ''}</div>
@@ -773,16 +754,9 @@ function renderFloorPlan(result) {
   }
 
   // Floor 0 — ground floor, imported items enter here
-  const importedRates = {};
-  for (const f of floors) {
-    for (const inp of f.inputs) {
-      if (inp.imported) importedRates[inp.item] = (importedRates[inp.item] || 0) + inp.rate;
-    }
-  }
-  const importedNeeded = Object.entries(importedRates).filter(([, r]) => r > 0).sort(([a], [b]) => a.localeCompare(b));
-  if (importedNeeded.length) {
-    const inputsHtml = importedNeeded.map(([item, rate]) =>
-      `<div class="inp"><div class="dot imported"></div>${itemIconSm(item)}<span>${esc(item)}</span><span class="inp-rate">${fmtR(rate)}/min${beltTag(calcBelts(rate))}</span></div>`
+  if (importedItems.length) {
+    const inputsHtml = importedItems.map(({ item, rate, belts }) =>
+      `<div class="inp"><div class="dot imported"></div>${itemIconSm(item)}<span>${esc(item)}</span><span class="inp-rate">${fmtR(rate)}/min${beltTag(belts)}</span></div>`
     ).join('');
     rows.push(`<tr class="floor-intake">
       <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">0</div></td>

@@ -1,5 +1,24 @@
 'use strict';
 
+const BELT_MARKS = [
+  { mark: 1, capacity: 60 },
+  { mark: 2, capacity: 120 },
+  { mark: 3, capacity: 270 },
+  { mark: 4, capacity: 480 },
+  { mark: 5, capacity: 780 },
+  { mark: 6, capacity: 1200 },
+];
+
+function calcBelts(rate, beltMark, beltUniform) {
+  if (rate <= 0) return { count: 0, mark: 1 };
+  const chosen = BELT_MARKS.find(b => b.mark === beltMark);
+  if (beltUniform) return { count: Math.ceil(rate / chosen.capacity), mark: chosen.mark };
+  const available = BELT_MARKS.filter(b => b.mark <= beltMark);
+  const single = available.find(b => b.capacity >= rate);
+  if (single) return { count: 1, mark: single.mark };
+  return { count: Math.ceil(rate / chosen.capacity), mark: chosen.mark };
+}
+
 // Plans a megafactory layout.
 //
 // params:
@@ -30,9 +49,15 @@
 //   rates    - { [item]: number } items/min needed across the whole plan
 function planFactory({
   availableRecipes,
+  availableMachines = null,
+  beltSettings = null,
   imports: importList = [],
   outputs: desiredOutputs = [],
 }) {
+  if (availableMachines != null) {
+    const machineSet = new Set(availableMachines);
+    availableRecipes = availableRecipes.filter(r => machineSet.has(r.machine));
+  }
   const imp = new Set(importList);
   const warnings = [];
   const warnedItems = new Set();
@@ -263,6 +288,10 @@ function planFactory({
   }
 
   const desiredSet = new Set(desiredOutputs.map(d => d.item));
+  const beltFor = beltSettings
+    ? rate => calcBelts(rate, beltSettings.beltMark, beltSettings.beltUniform)
+    : () => null;
+
   const floors = sorted.map((item, idx) => {
     const r = chosenRecipes[item];
     const oe = r.outputs.find(o => o.item === item);
@@ -274,13 +303,25 @@ function planFactory({
       recipe: r,
       machineCount: mc,
       outputRate: itemRate,
+      outputBelts: beltFor(itemRate),
       isDesired: desiredSet.has(item),
-      inputs: r.inputs.map(i => ({ item: i.item, rate: i.rate * mc, imported: imp.has(i.item) })),
+      inputs: r.inputs.map(i => ({ item: i.item, rate: i.rate * mc, imported: imp.has(i.item), belts: beltFor(i.rate * mc) })),
       byproducts: r.outputs.filter(o => o.item !== item).map(o => ({ item: o.item, rate: o.rate * mc })),
     };
   });
 
-  return { floors, warnings, rates: finalRates };
+  const importedTotals = {};
+  for (const f of floors) {
+    for (const inp of f.inputs) {
+      if (inp.imported) importedTotals[inp.item] = (importedTotals[inp.item] || 0) + inp.rate;
+    }
+  }
+  const importedItems = Object.entries(importedTotals)
+    .filter(([, r]) => r > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([item, rate]) => ({ item, rate, belts: beltFor(rate) }));
+
+  return { floors, warnings, rates: finalRates, importedItems };
 }
 
 function fmtRate(n) {
@@ -289,5 +330,5 @@ function fmtRate(n) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { planFactory };
+  module.exports = { planFactory, calcBelts, BELT_MARKS };
 }
