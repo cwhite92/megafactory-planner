@@ -19,35 +19,81 @@ function calcBelts(rate, beltMark, beltUniform) {
   return { count: Math.ceil(rate / chosen.capacity), mark: chosen.mark };
 }
 
-// Plans a megafactory layout.
+// ── GLPK solver loader ──────────────────────────────────────────────────────
+// glpk.js initialises its WASM module asynchronously, so the solver instance is
+// resolved once and cached.  In Node we use the synchronous-solve "node" build;
+// in the browser the default build (web worker) is used.  Either way solve() is
+// awaited, which is why planFactory is async.
+let _glpkPromise = null;
+function getGLPK() {
+  if (_glpkPromise) return _glpkPromise;
+  const isNode = typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
+  if (isNode) {
+    // Node: synchronous-solve build, imported lazily (ESM-only package).
+    _glpkPromise = import(/* @vite-ignore */ 'glpk.js/node').then(m => (m.default || m)());
+  } else {
+    // Browser: the GLPK factory is published as a global by a bundled module
+    // script in index.html (planner.js itself is a classic script, so it can't
+    // import the ESM package directly). Wait for that global, then instantiate.
+    _glpkPromise = (async () => {
+      for (let i = 0; i < 400 && !globalThis.__GLPK_FACTORY__; i++) {
+        await new Promise(res => setTimeout(res, 25));
+      }
+      const factory = globalThis.__GLPK_FACTORY__;
+      if (typeof factory !== 'function') throw new Error('GLPK solver failed to load');
+      return factory();
+    })();
+  }
+  return _glpkPromise;
+}
+
+const EPS = 1e-6;
+
+// Plans a megafactory layout by solving an Integer Linear Program.
 //
 // params:
 //   availableRecipes - recipe objects already filtered to the user's selection;
-//                      when multiple recipes produce the same item the planner
-//                      automatically picks the best one (see chooseBestRecipe)
+//                      when multiple recipes produce the same item the solver
+//                      picks the best one as part of the optimisation.
 //   imports          - string[] of items fed in from outside (no production floor)
 //   outputs          - {item, rate}[] of desired factory products
 //
-// Recipe selection heuristic (chooseBestRecipe):
-//   Primary:   prefer the recipe whose inputs are most "already in the plan"
-//              (imported or already needed by something else) — minimises new floors
-//   Tiebreak:  higher primary output rate → fewer machines for the same throughput
+// ILP formulation
+// ───────────────
+// Decision variables, per available recipe r:
+//   x[r] >= 0  (continuous)  number of machines running that recipe
+//   b[r] in {0,1}            whether the recipe is used at all
 //
-// Two-pass optimisation: Pass 1 runs with empty preKnown so alt-recipe inputs are
-// never artificially treated as free — base recipes win when they require fewer new
-// floors.  Pass 2 re-runs seeded with items actually chosen in pass 1, removing
-// traversal-order bias without inflating alt-recipe scores.
+// Constraints:
+//   1. At most one recipe per item:   sum(b[r] : r produces item) <= 1
+//   2. Big-M linking:                 x[r] <= M[r] * b[r]
+//      M[r] is a per-recipe upper bound on machine count (see computeMaxMachines).
+//      A *tight* per-recipe M is essential: GLPK's integer feasibility tolerance
+//      (~1e-5) lets b round to 0 when x/M is tiny, which would make adding a
+//      recipe look "free" and defeat the fewest-floors objective.  Keeping M
+//      close to the real machine count keeps x/M well above that tolerance.
+//   3. Supply >= demand, per non-imported item that has a producer:
+//        sum(x[r]*out_rate(r,item) : r produces item)
+//          - sum(x[r]*in_rate(r,item) : r consumes item)  >=  desired_rate(item)
 //
-// Cycle-safety: BY_OUTPUT is keyed by PRIMARY output only — byproducts are never
-// indexed, preventing false cycles (e.g. Aluminum Scrap emits Water as byproduct;
-// indexing Water here would route Water through Aluminum Scrap → cycle).
+// Objective (minimise, weighted by priority):
+//   1e6 * sum(b[r])                          fewest floors        (priority 1)
+//   + 1 * sum(x[r])                          fewest machines      (priority 2)
+//   + 0.001 * sum(x[r]*in_rate over inputs)  least belt traffic   (priority 3)
 //
-// returns { floors, warnings, rates }
+// "Produces item" means the recipe's PRIMARY output (outputs[0]) only — byproducts
+// are listed on floors but never indexed as a production source.  This mirrors the
+// original BY_OUTPUT design and prevents false cycles (e.g. Aluminum Scrap emits
+// Water as a byproduct; treating that as a Water source would route Water through
+// Aluminum Scrap and create a spurious loop).
+//
+// returns { floors, warnings, rates, importedItems }
 //   floors  - ordered bottom-to-top (floor 1 first):
-//             { num, product, recipe, machineCount, outputRate, isDesired, inputs, byproducts }
+//             { num, product, recipe, machineCount, outputRate, outputBelts,
+//               isDesired, inputs, byproducts }
 //   warnings - string[]
-//   rates    - { [item]: number } items/min needed across the whole plan
-function planFactory({
+//   rates    - { [item]: number } items/min produced across the whole plan
+async function planFactory({
   availableRecipes,
   availableMachines = null,
   beltSettings = null,
@@ -69,108 +115,180 @@ function planFactory({
   }
 
   if (!desiredOutputs.length) {
-    return { floors: [], warnings: ['No desired outputs configured.'], rates: {} };
+    return { floors: [], warnings: ['No desired outputs configured.'], rates: {}, importedItems: [] };
   }
 
-  // Index available recipes by PRIMARY output only.
-  const BY_OUTPUT = {};
-  for (const r of availableRecipes) {
+  // Recipes indexed by PRIMARY output item.
+  const producersByItem = {};
+  availableRecipes.forEach((r, i) => {
     const primary = r.outputs[0].item;
-    if (!BY_OUTPUT[primary]) BY_OUTPUT[primary] = [];
-    BY_OUTPUT[primary].push(r);
+    (producersByItem[primary] || (producersByItem[primary] = [])).push(i);
+  });
+
+  // Desired output rate per item.
+  const desiredRate = {};
+  for (const { item, rate } of desiredOutputs) {
+    desiredRate[item] = (desiredRate[item] || 0) + rate;
   }
 
-  // Runs the recipe-selection DFS and returns { rates, chosenRecipes }.
-  // preKnown: items discovered in a prior pass — treated as already in the
-  // factory (0 new floors) so recipe choices have full context from the start.
-  // emitWarnings: only true on the final pass to avoid duplicate messages.
-  function runDFS(preKnown, emitWarnings) {
-    const rates = {};
-    const chosenRecipes = {};
+  // Per-recipe upper bound on machine count, used as the big-M coefficient.
+  // Propagates demand from desired outputs down through every consuming recipe to
+  // a fixed point.  Each recipe is sized as if it were the *sole* producer of its
+  // item (worst case) so the bound is always >= the real machine count.  Imported
+  // inputs generate no further demand.  Cycles are bounded by the iteration cap.
+  function computeMaxMachines() {
+    const n = availableRecipes.length;
+    const maxMachines = new Array(n).fill(0);
+    const maxDemand = {};
+    for (const { item, rate } of desiredOutputs) maxDemand[item] = (maxDemand[item] || 0) + rate;
 
-    function transitiveNew(it, seen) {
-      if (imp.has(it) || it in rates || preKnown.has(it) || seen.has(it)) return 0;
-      seen.add(it);
-      if (chosenRecipes[it]) return 1 + chosenRecipes[it].inputs.reduce((s, i) => s + transitiveNew(i.item, seen), 0);
-      const cands = BY_OUTPUT[it];
-      if (!cands || !cands.length) return 1;
-      let bestR = cands[0], bestDirect = Infinity;
-      for (const r of cands) {
-        const d = r.inputs.filter(i => !imp.has(i.item) && !(i.item in rates) && !preKnown.has(i.item) && !seen.has(i.item)).length;
-        if (d < bestDirect) { bestDirect = d; bestR = r; }
-      }
-      return 1 + bestR.inputs.reduce((s, i) => s + transitiveNew(i.item, seen), 0);
-    }
-
-    function chooseBestRecipe(item) {
-      const candidates = BY_OUTPUT[item];
-      if (!candidates || !candidates.length) return null;
-      if (candidates.length === 1) return candidates[0];
-
-      let best = null, bestScore = -Infinity;
-      for (const r of candidates) {
-        const oe = r.outputs.find(o => o.item === item);
-        if (!oe) continue;
-        const seen = new Set([item]);
-        const newFloors = r.inputs.reduce((s, i) => s + transitiveNew(i.item, seen), 0);
-        const score = -newFloors * 1e6 + oe.rate;
-        if (score > bestScore) { bestScore = score; best = r; }
-      }
-      return best;
-    }
-
-    for (const { item, rate } of desiredOutputs) {
-      rates[item] = (rates[item] || 0) + rate;
-    }
-
-    const stack = desiredOutputs.map(d => d.item).filter(i => !imp.has(i));
-    const visited = new Set();
-
-    while (stack.length) {
-      const item = stack.pop();
-      if (visited.has(item) || imp.has(item)) continue;
-      visited.add(item);
-      const r = chooseBestRecipe(item);
-      if (!r) {
-        if (emitWarnings) warn(`Your factory needs "${item}". Add it as an import, add a recipe for it, or choose an alt recipe to eliminate the need for it.`, item);
-        continue;
-      }
-      chosenRecipes[item] = r;
-      const oe = r.outputs.find(o => o.item === item);
-      if (!oe) continue;
-      const mc = rates[item] / oe.rate;
-      for (const inp of r.inputs) {
-        if (!imp.has(inp.item)) {
-          rates[inp.item] = (rates[inp.item] || 0) + inp.rate * mc;
-          if (!visited.has(inp.item)) stack.push(inp.item);
+    const maxIter = Math.max(50, n * 2 + 10);
+    for (let iter = 0; iter < maxIter; iter++) {
+      let changed = false;
+      availableRecipes.forEach((r, i) => {
+        const out = r.outputs[0];
+        const m = (maxDemand[out.item] || 0) / out.rate;
+        if (m > maxMachines[i]) { maxMachines[i] = m; changed = true; }
+      });
+      const nd = {};
+      for (const { item, rate } of desiredOutputs) nd[item] = (nd[item] || 0) + rate;
+      availableRecipes.forEach((r, i) => {
+        for (const inp of r.inputs) {
+          if (!imp.has(inp.item)) nd[inp.item] = (nd[inp.item] || 0) + maxMachines[i] * inp.rate;
         }
+      });
+      for (const k of Object.keys(nd)) {
+        if ((nd[k] || 0) > (maxDemand[k] || 0)) { maxDemand[k] = nd[k]; changed = true; }
       }
+      if (!changed) break;
     }
-
-    return { rates, chosenRecipes };
+    return maxMachines;
   }
 
-  // Two-pass recipe selection:
-  // Pass 1 runs with no pre-seeding so alt-recipe inputs are never treated as
-  // "free" — a recipe whose inputs require long production chains will correctly
-  // score worse than a base recipe with simpler inputs.
-  // Pass 2 re-runs with the items actually produced in pass 1 as preKnown,
-  // removing traversal-order bias without inflating alt-recipe scores.
-  const { chosenRecipes: pass1Recipes } = runDFS(new Set(), false);
-  const { rates, chosenRecipes } = runDFS(new Set(Object.keys(pass1Recipes)), true);
+  const maxMachines = computeMaxMachines();
+  // Slack factor keeps the bound a safe over-estimate (so feasible plans are never
+  // cut off) while staying tight enough for the integer tolerance; clamp guards
+  // against degenerate 0 / runaway cyclic estimates.
+  const bigM = i => Math.min(1e6, Math.max(1, maxMachines[i] * 2 + 1));
 
-  // Catch any items in rates that were never resolved (should be rare).
-  for (const item of Object.keys(rates)) {
+  const glpk = await getGLPK();
+
+  const xName = i => `x${i}`;
+  const bName = i => `b${i}`;
+
+  // Objective: 1e6*b + (1 + 0.001*totalInputRate)*x  per recipe.
+  const objVars = [];
+  availableRecipes.forEach((r, i) => {
+    const totalIn = r.inputs.reduce((s, inp) => s + inp.rate, 0);
+    objVars.push({ name: xName(i), coef: 1 + 0.001 * totalIn });
+    objVars.push({ name: bName(i), coef: 1e6 });
+  });
+
+  // Per-item net coefficient map for the supply>=demand rows: +out for the
+  // producer, -in for every consumer (a recipe that both makes and consumes an
+  // item nets out correctly).
+  const itemVarCoef = {};
+  function addCoef(item, name, c) {
+    const m = itemVarCoef[item] || (itemVarCoef[item] = new Map());
+    m.set(name, (m.get(name) || 0) + c);
+  }
+  availableRecipes.forEach((r, i) => {
+    addCoef(r.outputs[0].item, xName(i), r.outputs[0].rate);
+    for (const inp of r.inputs) addCoef(inp.item, xName(i), -inp.rate);
+  });
+
+  const subjectTo = [];
+  let rowId = 0;
+
+  // (3) supply >= demand for each non-imported item that something can produce.
+  for (const item of Object.keys(itemVarCoef)) {
+    if (imp.has(item)) continue;            // imported -> unlimited free supply
+    if (!producersByItem[item]) continue;   // no recipe -> reported as a warning below
+    const vars = [];
+    for (const [name, coef] of itemVarCoef[item]) if (coef !== 0) vars.push({ name, coef });
+    if (!vars.length) continue;
+    subjectTo.push({
+      name: `s${rowId++}`,
+      vars,
+      bnds: { type: glpk.GLP_LO, lb: desiredRate[item] || 0, ub: 0 },
+    });
+  }
+
+  // (2) big-M linking, per recipe.
+  availableRecipes.forEach((r, i) => {
+    subjectTo.push({
+      name: `m${i}`,
+      vars: [{ name: xName(i), coef: 1 }, { name: bName(i), coef: -bigM(i) }],
+      bnds: { type: glpk.GLP_UP, ub: 0, lb: 0 },
+    });
+  });
+
+  // (1) at most one recipe per item (only binding where >1 recipe competes).
+  for (const item of Object.keys(producersByItem)) {
+    const idxs = producersByItem[item];
+    if (idxs.length < 2) continue;
+    subjectTo.push({
+      name: `o${rowId++}`,
+      vars: idxs.map(i => ({ name: bName(i), coef: 1 })),
+      bnds: { type: glpk.GLP_UP, ub: 1, lb: 0 },
+    });
+  }
+
+  const bounds = availableRecipes.map((r, i) => ({ name: xName(i), type: glpk.GLP_LO, lb: 0, ub: 0 }));
+  const binaries = availableRecipes.map((r, i) => bName(i));
+
+  const lp = {
+    name: 'factory',
+    objective: { direction: glpk.GLP_MIN, name: 'cost', vars: objVars },
+    subjectTo,
+    bounds,
+    binaries,
+  };
+
+  let sol;
+  try {
+    const res = await glpk.solve(lp, glpk.GLP_MSG_OFF);
+    sol = res && res.result;
+  } catch (e) {
+    sol = null;
+  }
+
+  if (!sol || (sol.status !== glpk.GLP_OPT && sol.status !== glpk.GLP_FEAS)) {
+    warnings.push('Could not find a feasible factory plan. Check that every required item has a recipe or is imported, and break any circular dependencies.');
+    return { floors: [], warnings, rates: {}, importedItems: [] };
+  }
+
+  // ── reconstruct the plan from the solution ──────────────────────────────────
+  // chosenRecipes[item] = the single recipe whose primary output is `item`, when
+  // it runs (x > 0).  finalRates[item] = items/min produced (== demand at the LP
+  // optimum, since producing more would only add machines).
+  const chosenRecipes = {};
+  const finalRates = {};
+  availableRecipes.forEach((r, i) => {
+    const x = sol.vars[xName(i)] || 0;
+    if (x <= EPS) return;
+    const item = r.outputs[0].item;
+    chosenRecipes[item] = r;
+    finalRates[item] = (finalRates[item] || 0) + x * r.outputs[0].rate;
+  });
+
+  // Warn about items that are needed (desired, or consumed by a chosen recipe) but
+  // have no recipe and are not imported.
+  const needed = new Set(Object.keys(desiredRate));
+  for (const item of Object.keys(chosenRecipes)) {
+    for (const inp of chosenRecipes[item].inputs) needed.add(inp.item);
+  }
+  for (const item of needed) {
     if (!imp.has(item) && !chosenRecipes[item]) {
       warn(
-        `"${item}" needs ${fmtRate(rates[item])}/min but has no available recipe — ` +
-        `enable a recipe for it or mark it as imported.`,
+        `Your factory needs "${item}" but no available recipe produces it. ` +
+        `Add it as an imported item, or enable/choose a recipe that makes it.`,
         item
       );
     }
   }
 
-  const produced = Object.keys(rates).filter(i => !imp.has(i) && chosenRecipes[i]);
+  const produced = Object.keys(chosenRecipes);
   const producedSet = new Set(produced);
 
   // Topological sort (Kahn's algorithm).
@@ -266,27 +384,6 @@ function planFactory({
     for (const item of rev) sorted.push(item);
   }
 
-  // Recompute rates top-down in reverse-topo order so that desired-output items
-  // processed early by the DFS (before all consumers were known) don't produce
-  // under-counted ingredient rates.  Each item's finalRates entry = desired rate
-  // (if any) + sum of demand from every floor above it, computed consistently.
-  const finalRates = {};
-  for (const { item, rate } of desiredOutputs) {
-    finalRates[item] = (finalRates[item] || 0) + rate;
-  }
-  for (let i = sorted.length - 1; i >= 0; i--) {
-    const item = sorted[i];
-    if (!(item in finalRates)) continue;
-    const r = chosenRecipes[item];
-    const oe = r.outputs.find(o => o.item === item);
-    const mc = finalRates[item] / oe.rate;
-    for (const inp of r.inputs) {
-      if (!imp.has(inp.item) && chosenRecipes[inp.item]) {
-        finalRates[inp.item] = (finalRates[inp.item] || 0) + inp.rate * mc;
-      }
-    }
-  }
-
   const desiredSet = new Set(desiredOutputs.map(d => d.item));
   const beltFor = beltSettings
     ? rate => calcBelts(rate, beltSettings.beltMark, beltSettings.beltUniform)
@@ -295,7 +392,7 @@ function planFactory({
   const floors = sorted.map((item, idx) => {
     const r = chosenRecipes[item];
     const oe = r.outputs.find(o => o.item === item);
-    const itemRate = finalRates[item] ?? rates[item];
+    const itemRate = finalRates[item];
     const mc = itemRate / oe.rate;
     return {
       num: idx + 1,

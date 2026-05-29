@@ -23,5 +23,8 @@
   "homepage": "https://github.com/cwhite92/megafactory-planner#readme",
   "devDependencies": {
     "vite": "^8.0.14"
+  },
+  "dependencies": {
+    "glpk.js": "^5.0.0"
   }
 }

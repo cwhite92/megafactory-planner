@@ -39,16 +39,22 @@ function pick(...names) {
 }
 
 // ── tiny test runner ──────────────────────────────────────────────────────────
+// planFactory is async (the ILP solver initialises its WASM backend
+// asynchronously), so tests register an async fn and are awaited in sequence.
 let passed = 0, failed = 0;
-function test(name, fn) {
-  try {
-    fn();
-    console.log(`  ✓ ${name}`);
-    passed++;
-  } catch (e) {
-    console.error(`  ✗ ${name}`);
-    console.error(`    ${e.message}`);
-    failed++;
+const tests = [];
+function test(name, fn) { tests.push({ name, fn }); }
+async function runTests() {
+  for (const { name, fn } of tests) {
+    try {
+      await fn();
+      console.log(`  ✓ ${name}`);
+      passed++;
+    } catch (e) {
+      console.error(`  ✗ ${name}`);
+      console.error(`    ${e.message}`);
+      failed++;
+    }
   }
 }
 function assert(cond, msg) { if (!cond) throw new Error(msg || 'assertion failed'); }
@@ -64,14 +70,14 @@ function plan(opts) {
 // ── tests ─────────────────────────────────────────────────────────────────────
 console.log('planFactory tests\n');
 
-test('returns empty floors with warning when no outputs given', () => {
-  const { floors, warnings } = plan({ imports: [], outputs: [] });
+test('returns empty floors with warning when no outputs given', async () => {
+  const { floors, warnings } = await plan({ imports: [], outputs: [] });
   assertEqual(floors.length, 0);
   assert(warnings.length > 0, 'should warn');
 });
 
-test('single item with imported raw input produces one floor', () => {
-  const { floors, warnings } = plan({
+test('single item with imported raw input produces one floor', async () => {
+  const { floors, warnings } = await plan({
     imports: ['Copper Ore'],
     outputs: [{ item: 'Copper Ingot', rate: 30 }],
   });
@@ -80,8 +86,8 @@ test('single item with imported raw input produces one floor', () => {
   assert(!warnings.length, `unexpected warnings: ${warnings}`);
 });
 
-test('floors ordered bottom-to-top: dependencies precede dependents', () => {
-  const { floors } = plan({
+test('floors ordered bottom-to-top: dependencies precede dependents', async () => {
+  const { floors } = await plan({
     imports: ['Copper Ore'],
     outputs: [{ item: 'Cable', rate: 30 }],
   });
@@ -91,8 +97,8 @@ test('floors ordered bottom-to-top: dependencies precede dependents', () => {
   assertEqual(floors[idx('Cable')].num, idx('Cable') + 1, 'floor nums are 1-based');
 });
 
-test('correct machine count calculation', () => {
-  const { floors } = plan({
+test('correct machine count calculation', async () => {
+  const { floors } = await plan({
     imports: ['Copper Ore'],
     outputs: [{ item: 'Cable', rate: 60 }],
   });
@@ -102,8 +108,8 @@ test('correct machine count calculation', () => {
   assertEqual(wire.machineCount,  4,  'Wire needs 4 machines for 120/min');
 });
 
-test('imported items do not get a production floor', () => {
-  const { floors } = plan({
+test('imported items do not get a production floor', async () => {
+  const { floors } = await plan({
     imports: ['Wire'],
     outputs: [{ item: 'Cable', rate: 30 }],
   });
@@ -111,18 +117,18 @@ test('imported items do not get a production floor', () => {
   assertEqual(floors.length, 1);
 });
 
-test('warning for item with no available recipe and not imported', () => {
+test('warning for item with no available recipe and not imported', async () => {
   // Circuit Board needs Plastic; Plastic has no recipe in BASE
-  const { warnings } = plan({
+  const { warnings } = await plan({
     imports: ['Copper Sheet'],
     outputs: [{ item: 'Circuit Board', rate: 7.5 }],
   });
   assert(warnings.some(w => w.includes('Plastic')), `expected Plastic warning, got: ${warnings}`);
 });
 
-test('excluding a recipe removes it from planning', () => {
+test('excluding a recipe removes it from planning', async () => {
   // Without Copper Ingot recipe, Wire (needs Copper Ingot) should warn about Copper Ingot
-  const { warnings } = planFactory({
+  const { warnings } = await planFactory({
     availableRecipes: pick('Cable', 'Wire'),
     imports: ['Copper Ore'],
     outputs: [{ item: 'Wire', rate: 30 }],
@@ -133,8 +139,8 @@ test('excluding a recipe removes it from planning', () => {
   );
 });
 
-test('byproducts listed on floor but not given their own floor', () => {
-  const { floors } = plan({
+test('byproducts listed on floor but not given their own floor', async () => {
+  const { floors } = await plan({
     imports: ['Bauxite', 'Water'],
     outputs: [{ item: 'Alumina Solution', rate: 120 }],
   });
@@ -143,8 +149,8 @@ test('byproducts listed on floor but not given their own floor', () => {
   assert(!floors.some(f => f.product === 'Silica'), 'Silica should not get its own floor');
 });
 
-test('aluminum chain: no false circular dependency when water is imported', () => {
-  const { floors, warnings } = plan({
+test('aluminum chain: no false circular dependency when water is imported', async () => {
+  const { floors, warnings } = await plan({
     imports: ['Bauxite', 'Coal', 'Water', 'Raw Quartz'],
     outputs: [{ item: 'Aluminum Ingot', rate: 60 }],
   });
@@ -153,16 +159,16 @@ test('aluminum chain: no false circular dependency when water is imported', () =
   assert(products.indexOf('Silica') < products.indexOf('Aluminum Ingot'), 'Silica before Aluminum Ingot');
 });
 
-test('net-consumption recipe (Encased Uranium Cell) does not create self-loop', () => {
-  const { warnings } = plan({
+test('net-consumption recipe (Encased Uranium Cell) does not create self-loop', async () => {
+  const { warnings } = await plan({
     imports: ['Uranium Ore', 'Concrete', 'Sulfur', 'Water'],
     outputs: [{ item: 'Encased Uranium Cell', rate: 25 }],
   });
   assert(!warnings.some(w => w.includes('Circular')), `unexpected cycle: ${warnings}`);
 });
 
-test('real mutual dependency (Recycled Plastic/Rubber) reports cycle warning', () => {
-  const { warnings } = planFactory({
+test('real mutual dependency (Recycled Plastic/Rubber) reports cycle warning', async () => {
+  const { warnings } = await planFactory({
     availableRecipes: pick('Recycled Plastic', 'Recycled Rubber'),
     imports: ['Fuel'],
     outputs: [{ item: 'Plastic', rate: 60 }],
@@ -170,14 +176,14 @@ test('real mutual dependency (Recycled Plastic/Rubber) reports cycle warning', (
   assert(warnings.some(w => w.includes('Circular')), `expected cycle warning, got: ${warnings}`);
 });
 
-test('best-recipe heuristic: prefers recipe that uses already-planned inputs', () => {
+test('best-recipe heuristic: prefers recipe that uses already-planned inputs', async () => {
   // Factory needs both Cable and Reinforced Iron Plate.
   // Cable needs Wire → Wire goes into `rates` first.
   // When the planner reaches Reinforced Iron Plate it has two options:
   //   Standard:       Iron Plate + Screws  (Screws not in plan → 1 new floor if Iron Plate already planned)
   //   Stitched Iron Plate: Iron Plate + Wire   (Wire IS already in plan  → 0 new inputs if Iron Plate already planned)
   // Stitched should win because Wire is already needed.
-  const { floors } = planFactory({
+  const { floors } = await planFactory({
     availableRecipes: pick(
       'Cable', 'Wire', 'Copper Ingot',
       'Reinforced Iron Plate', 'Stitched Iron Plate',
@@ -196,11 +202,11 @@ test('best-recipe heuristic: prefers recipe that uses already-planned inputs', (
   assert(!floors.some(f => f.product === 'Iron Rod'), 'Iron Rod floor should not exist when Stitched is chosen');
 });
 
-test('best-recipe heuristic tiebreak: without context, prefers higher output rate', () => {
+test('best-recipe heuristic tiebreak: without context, prefers higher output rate', async () => {
   // Only Reinforced Iron Plate needed; neither Wire nor Screws is already in plan.
   // Standard: Iron Plate + Screws → RIP 5/min
   // Stitched:  Iron Plate + Wire  → RIP 5.625/min  ← higher rate wins tiebreak
-  const { floors } = planFactory({
+  const { floors } = await planFactory({
     availableRecipes: pick(
       'Reinforced Iron Plate', 'Stitched Iron Plate',
       'Iron Plate', 'Iron Ingot', 'Iron Rod', 'Screws',
@@ -213,7 +219,7 @@ test('best-recipe heuristic tiebreak: without context, prefers higher output rat
   assertEqual(rip.recipe.name, 'Stitched Iron Plate', 'higher output rate wins tiebreak');
 });
 
-test('adding an intermediate as an explicit output does not change recipe choices', () => {
+test('adding an intermediate as an explicit output does not change recipe choices', async () => {
   // Reinforced Iron Plate is needed by both Cable (indirectly, no) — use a setup
   // where Wire is an intermediate for Cable, and also happens to feed Stitched Iron Plate.
   // Whether or not Wire is listed as a desired output, the recipe choices should be identical.
@@ -230,20 +236,20 @@ test('adding an intermediate as an explicit output does not change recipe choice
     ...baseOutputs,
     { item: 'Wire', rate: 10 },
   ];
-  const { floors: floorsWithout } = planFactory({ availableRecipes: recipes, imports: ['Copper Ore', 'Iron Ore'], outputs: baseOutputs });
-  const { floors: floorsWith }    = planFactory({ availableRecipes: recipes, imports: ['Copper Ore', 'Iron Ore'], outputs: withWireOutput });
+  const { floors: floorsWithout } = await planFactory({ availableRecipes: recipes, imports: ['Copper Ore', 'Iron Ore'], outputs: baseOutputs });
+  const { floors: floorsWith }    = await planFactory({ availableRecipes: recipes, imports: ['Copper Ore', 'Iron Ore'], outputs: withWireOutput });
 
   const recipeWithout = floorsWithout.find(f => f.product === 'Reinforced Iron Plate')?.recipe.name;
   const recipeWith    = floorsWith.find(f => f.product === 'Reinforced Iron Plate')?.recipe.name;
   assertEqual(recipeWith, recipeWithout, 'recipe choice for RIP should be the same regardless of whether Wire is an explicit output');
 });
 
-test('outputRate for intermediate floors matches actual demand from consumers', () => {
+test('outputRate for intermediate floors matches actual demand from consumers', async () => {
   // Wire is an intermediate for Cable AND listed as a desired output.
   // If DFS processes Wire before Cable has added its Wire demand, Wire's outputRate
   // would be under-counted while Cable's inputs would show the correct (higher) rate.
   // After the fix, both must agree.
-  const { floors } = planFactory({
+  const { floors } = await planFactory({
     availableRecipes: pick('Cable', 'Wire', 'Copper Ingot'),
     imports: ['Copper Ore'],
     outputs: [
@@ -268,9 +274,9 @@ test('outputRate for intermediate floors matches actual demand from consumers', 
   assert(wire.outputRate >= cableWireInput.rate, 'Wire outputRate must cover Cable demand');
 });
 
-test('beltSettings: adds belt info to floor outputs, inputs, and importedItems', () => {
+test('beltSettings: adds belt info to floor outputs, inputs, and importedItems', async () => {
   // Cable 30/min → Wire 60/min → Copper Ingot 30/min → Copper Ore 30/min (imported)
-  const { floors, importedItems } = planFactory({
+  const { floors, importedItems } = await planFactory({
     availableRecipes: pick('Cable', 'Wire', 'Copper Ingot'),
     beltSettings: { beltMark: 6, beltUniform: false },
     imports: ['Copper Ore'],
@@ -293,8 +299,8 @@ test('beltSettings: adds belt info to floor outputs, inputs, and importedItems',
   assertEqual(copperOre.belts.mark, 1);
 });
 
-test('beltSettings: null belt fields when beltSettings omitted', () => {
-  const { floors, importedItems } = plan({
+test('beltSettings: null belt fields when beltSettings omitted', async () => {
+  const { floors, importedItems } = await plan({
     imports: ['Copper Ore'],
     outputs: [{ item: 'Cable', rate: 30 }],
   });
@@ -304,9 +310,9 @@ test('beltSettings: null belt fields when beltSettings omitted', () => {
   assert(importedItems.every(i => i.belts === null), 'importedItems belts should be null without beltSettings');
 });
 
-test('availableMachines filters out recipes whose machine is disabled', () => {
+test('availableMachines filters out recipes whose machine is disabled', async () => {
   // Wire is made in a Constructor; disabling Constructor means no Wire recipe is available.
-  const { warnings } = planFactory({
+  const { warnings } = await planFactory({
     availableRecipes: BASE,
     availableMachines: ['Smelter', 'Assembler', 'Refinery', 'Foundry', 'Blender'],
     imports: ['Copper Ore'],
@@ -315,6 +321,52 @@ test('availableMachines filters out recipes whose machine is disabled', () => {
   assert(warnings.some(w => w.includes('Wire')), `expected Wire warning when Constructor is disabled, got: ${warnings}`);
 });
 
+test('ILP finds the globally-fewest-floors plan a greedy heuristic would miss', async () => {
+  // Two desired outputs, Alpha and Beta, that can share an intermediate "Shared".
+  //
+  //   Alpha (solo) : Solo  -> Alpha 30   (high output rate)
+  //   Alpha (share): Shared -> Alpha 10  (low output rate)
+  //   Beta  (share): Shared -> Beta  10  (the only way to make Beta)
+  //   Solo         : Solo Raw  -> Solo
+  //   Shared       : Shared Raw -> Shared
+  //
+  // A greedy planner processing Alpha first sees two recipes that each introduce
+  // one new intermediate (Solo vs Shared) — a tie it breaks on output rate, so it
+  // picks "Alpha (solo)" (30 > 10). Beta then forces "Shared" anyway, leaving BOTH
+  // Solo and Shared built: 4 production floors (Alpha, Solo, Beta, Shared).
+  //
+  // The ILP minimises total floors globally: choosing "Alpha (share)" lets Alpha
+  // and Beta share the one Shared floor, dropping Solo entirely → 3 floors.
+  const recipes = [
+    r('Alpha (solo)',  'Assembler', false, [io('Solo', 30)],       [io('Alpha', 30)]),
+    r('Alpha (share)', 'Assembler', true,  [io('Shared', 10)],     [io('Alpha', 10)]),
+    r('Beta (share)',  'Assembler', false, [io('Shared', 10)],     [io('Beta', 10)]),
+    r('Solo',          'Constructor', false, [io('Solo Raw', 30)], [io('Solo', 30)]),
+    r('Shared',        'Constructor', false, [io('Shared Raw', 20)], [io('Shared', 20)]),
+  ];
+  const { floors, warnings } = await planFactory({
+    availableRecipes: recipes,
+    imports: ['Solo Raw', 'Shared Raw'],
+    outputs: [{ item: 'Alpha', rate: 10 }, { item: 'Beta', rate: 10 }],
+  });
+  assert(!warnings.length, `unexpected warnings: ${warnings}`);
+
+  const alpha = floors.find(f => f.product === 'Alpha');
+  assert(alpha, 'Alpha floor should exist');
+  assertEqual(alpha.recipe.name, 'Alpha (share)', 'ILP should pick the sharing recipe for Alpha');
+
+  // The shared intermediate is built once and feeds both products; Solo is dropped.
+  assert(floors.some(f => f.product === 'Shared'), 'Shared floor should exist');
+  assert(!floors.some(f => f.product === 'Solo'), 'Solo floor should NOT exist — sharing makes it unnecessary');
+  assertEqual(floors.length, 3, 'optimal plan has 3 floors (Alpha, Beta, Shared), not the greedy 4');
+
+  // Shared must supply both consumers: Alpha needs 10/min, Beta needs 10/min = 20/min.
+  const shared = floors.find(f => f.product === 'Shared');
+  assertEqual(shared.outputRate, 20, 'Shared output must cover Alpha (10) + Beta (10)');
+});
+
 // ── summary ───────────────────────────────────────────────────────────────────
-console.log(`\n${passed} passed, ${failed} failed`);
-if (failed) process.exit(1);
+runTests().then(() => {
+  console.log(`\n${passed} passed, ${failed} failed`);
+  if (failed) process.exit(1);
+});

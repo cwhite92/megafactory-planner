@@ -238,6 +238,12 @@ tr.floor-selected td{background:rgba(255,255,255,.04)!important;outline:1px soli
 </div>
 <datalist id="items-dl"></datalist>
 
+<!-- Publishes the GLPK solver factory as a global so the (classic) planner.js
+     script can use it. Bundled by Vite from the glpk.js package. -->
+<script type="module">
+  import GLPK from 'glpk.js';
+  window.__GLPK_FACTORY__ = GLPK;
+</script>
 <script src="planner.js"></script>
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
@@ -845,8 +851,14 @@ function addImport() {
 }
 function removeImport(i) { S.imports.splice(i, 1); renderImports(); autoGenerate(); }
 
-function generate() {
-  const result = plan();
+// planFactory is async (the ILP solver initialises its WASM backend
+// asynchronously). A sequence token ensures a slow solve from an earlier edit
+// can't overwrite the render of a newer one.
+let _planSeq = 0;
+async function generate() {
+  const seq = ++_planSeq;
+  const result = await plan();
+  if (seq !== _planSeq) return; // a newer generate() superseded this one
   renderFloorPlan(result);
 }
 
