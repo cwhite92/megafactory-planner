@@ -365,6 +365,39 @@ test('ILP finds the globally-fewest-floors plan a greedy heuristic would miss', 
   assertEqual(shared.outputRate, 20, 'Shared output must cover Alpha (10) + Beta (10)');
 });
 
+test('avoids an alt recipe whose input cannot be sourced when a clean recipe exists', async () => {
+  // Fused Wire (Wire 90/min) needs Caterium Ingot — but no recipe makes it and it
+  // isn't imported. Standard Wire (Wire 30/min, only Copper Ingot) is fully
+  // sourceable. Fused Wire would need fewer machines, so a planner that ignored
+  // the unsourceable input would wrongly pick it. The ILP must pick standard Wire
+  // and raise no warning, because the phantom Caterium Ingot carries a heavy
+  // penalty that outweighs the machine saving.
+  const { floors, warnings } = await planFactory({
+    availableRecipes: pick('Wire', 'Fused Wire', 'Copper Ingot'),
+    imports: ['Copper Ore'],
+    outputs: [{ item: 'Wire', rate: 30 }],
+  });
+  const wire = floors.find(f => f.product === 'Wire');
+  assert(wire, 'Wire floor should exist');
+  assertEqual(wire.recipe.name, 'Wire', 'should pick the fully-sourceable standard Wire, not Fused Wire');
+  assert(!floors.some(f => f.product === 'Caterium Ingot'), 'no Caterium Ingot floor');
+  assert(!warnings.length, `expected no warnings, got: ${warnings}`);
+});
+
+test('still builds a desired output when only a deep ingredient is unsourceable', async () => {
+  // Circuit Board (desired) needs Plastic, which has no recipe in BASE and is not
+  // imported. The planner must still build the Circuit Board floor and warn about
+  // the missing Plastic specifically — NOT silently drop the desired product and
+  // warn about Circuit Board itself.
+  const { floors, warnings } = await plan({
+    imports: ['Copper Sheet'],
+    outputs: [{ item: 'Circuit Board', rate: 7.5 }],
+  });
+  assert(floors.some(f => f.product === 'Circuit Board'), 'Circuit Board floor should still be built');
+  assert(warnings.some(w => w.includes('Plastic')), `expected Plastic warning, got: ${warnings}`);
+  assert(!warnings.some(w => w.includes('Circuit Board')), `should not warn about the desired output itself, got: ${warnings}`);
+});
+
 // ── summary ───────────────────────────────────────────────────────────────────
 runTests().then(() => {
   console.log(`\n${passed} passed, ${failed} failed`);

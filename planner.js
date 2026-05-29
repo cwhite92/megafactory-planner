@@ -200,12 +200,42 @@ async function planFactory({
   const subjectTo = [];
   let rowId = 0;
 
-  // (3) supply >= demand for each non-imported item that something can produce.
-  for (const item of Object.keys(itemVarCoef)) {
-    if (imp.has(item)) continue;            // imported -> unlimited free supply
-    if (!producersByItem[item]) continue;   // no recipe -> reported as a warning below
+  // (3) supply >= demand for every non-imported item that is produced, consumed,
+  // or desired.
+  //
+  // Items that *no* recipe can produce (and aren't imported) — e.g. an alt
+  // recipe's exotic ingredient that the user forgot to import — get a "virtual
+  // import" variable v[item] >= 0 carrying a huge objective penalty. The penalty
+  // makes the solver avoid any recipe that depends on such an item whenever a
+  // real alternative exists (so it won't pick an alt recipe whose input can't be
+  // sourced), yet still lets a plan be produced when there's no alternative.
+  // After solving, v[item] > 0 flags exactly the unsatisfiable items to warn
+  // about. Items that *can* be produced get a hard constraint with no virtual
+  // variable, so desired outputs and their producible sub-chains are always
+  // built (rather than the solver "importing" a finished product to dodge a
+  // missing deep ingredient), and genuine cycles stay solvable via real flow.
+  //
+  // The penalty must dominate the floor term (1e6 each) so a clean production
+  // path always beats a phantom-dependent one, yet stay small enough not to
+  // swamp GLPK's precision on the unit-scale machine/belt tie-breakers. 1e8
+  // clears any realistic floor count (~100) while leaving those tie-breaks intact.
+  const VIRTUAL_PENALTY = 1e8;
+  const constraintItems = new Set();
+  for (const item of Object.keys(itemVarCoef)) if (!imp.has(item)) constraintItems.add(item);
+  for (const item of Object.keys(desiredRate)) if (!imp.has(item)) constraintItems.add(item);
+
+  const virtualVars = []; // { name, item } for post-solve warning detection
+  let vId = 0;
+  for (const item of constraintItems) {
     const vars = [];
-    for (const [name, coef] of itemVarCoef[item]) if (coef !== 0) vars.push({ name, coef });
+    const coefs = itemVarCoef[item];
+    if (coefs) for (const [name, coef] of coefs) if (coef !== 0) vars.push({ name, coef });
+    if (!producersByItem[item]) {
+      const vName = `v${vId++}`;
+      virtualVars.push({ name: vName, item });
+      objVars.push({ name: vName, coef: VIRTUAL_PENALTY });
+      vars.push({ name: vName, coef: 1 });
+    }
     if (!vars.length) continue;
     subjectTo.push({
       name: `s${rowId++}`,
@@ -235,6 +265,7 @@ async function planFactory({
   }
 
   const bounds = availableRecipes.map((r, i) => ({ name: xName(i), type: glpk.GLP_LO, lb: 0, ub: 0 }));
+  for (const v of virtualVars) bounds.push({ name: v.name, type: glpk.GLP_LO, lb: 0, ub: 0 });
   const binaries = availableRecipes.map((r, i) => bName(i));
 
   const lp = {
@@ -272,18 +303,14 @@ async function planFactory({
     finalRates[item] = (finalRates[item] || 0) + x * r.outputs[0].rate;
   });
 
-  // Warn about items that are needed (desired, or consumed by a chosen recipe) but
-  // have no recipe and are not imported.
-  const needed = new Set(Object.keys(desiredRate));
-  for (const item of Object.keys(chosenRecipes)) {
-    for (const inp of chosenRecipes[item].inputs) needed.add(inp.item);
-  }
-  for (const item of needed) {
-    if (!imp.has(item) && !chosenRecipes[item]) {
+  // Warn about items that had to be met by a virtual import — i.e. they're needed
+  // but no available recipe produces them and they aren't imported.
+  for (const v of virtualVars) {
+    if ((sol.vars[v.name] || 0) > EPS) {
       warn(
-        `Your factory needs "${item}" but no available recipe produces it. ` +
+        `Your factory needs "${v.item}" but no available recipe produces it. ` +
         `Add it as an imported item, or enable/choose a recipe that makes it.`,
-        item
+        v.item
       );
     }
   }
