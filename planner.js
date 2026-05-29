@@ -14,6 +14,11 @@
 //              (imported or already needed by something else) — minimises new floors
 //   Tiebreak:  higher primary output rate → fewer machines for the same throughput
 //
+// Two-pass optimisation: the planner runs the DFS twice.  Pass 1 discovers every
+// item the factory will produce.  Pass 2 re-runs with that full item set treated as
+// "already available", so recipe choices are not biased by DFS traversal order —
+// items produced as intermediates get the same treatment as declared outputs.
+//
 // Cycle-safety: BY_OUTPUT is keyed by PRIMARY output only — byproducts are never
 // indexed, preventing false cycles (e.g. Aluminum Scrap emits Water as byproduct;
 // indexing Water here would route Water through Aluminum Scrap → cycle).
@@ -50,77 +55,97 @@ function planFactory({
     BY_OUTPUT[primary].push(r);
   }
 
-  // rates is populated during the DFS below; chooseBestRecipe closes over it so
-  // each decision reflects which inputs are already committed to the plan.
-  const rates = {};
+  // Runs the recipe-selection DFS and returns { rates, chosenRecipes }.
+  // preKnown: items discovered in a prior pass — treated as already in the
+  // factory (0 new floors) so recipe choices have full context from the start.
+  // emitWarnings: only true on the final pass to avoid duplicate messages.
+  function runDFS(preKnown, emitWarnings) {
+    const rates = {};
+    const chosenRecipes = {};
 
-  function chooseBestRecipe(item) {
-    const candidates = BY_OUTPUT[item];
-    if (!candidates || !candidates.length) return null;
-    if (candidates.length === 1) return candidates[0];
-
-    // Recursively estimates total new production floors a recipe choice would require.
-    // `seen` is shared across siblings of the same candidate to avoid double-counting
-    // items used by multiple inputs of the same recipe.
     function transitiveNew(it, seen) {
-      if (imp.has(it) || it in rates || seen.has(it)) return 0;
+      if (imp.has(it) || it in rates || preKnown.has(it) || seen.has(it)) return 0;
       seen.add(it);
       if (chosenRecipes[it]) return 1 + chosenRecipes[it].inputs.reduce((s, i) => s + transitiveNew(i.item, seen), 0);
       const cands = BY_OUTPUT[it];
       if (!cands || !cands.length) return 1;
-      // Greedy sub-choice: pick the candidate with the fewest direct new inputs for estimation.
       let bestR = cands[0], bestDirect = Infinity;
       for (const r of cands) {
-        const d = r.inputs.filter(i => !imp.has(i.item) && !(i.item in rates) && !seen.has(i.item)).length;
+        const d = r.inputs.filter(i => !imp.has(i.item) && !(i.item in rates) && !preKnown.has(i.item) && !seen.has(i.item)).length;
         if (d < bestDirect) { bestDirect = d; bestR = r; }
       }
       return 1 + bestR.inputs.reduce((s, i) => s + transitiveNew(i.item, seen), 0);
     }
 
-    let best = null, bestScore = -Infinity;
-    for (const r of candidates) {
+    function chooseBestRecipe(item) {
+      const candidates = BY_OUTPUT[item];
+      if (!candidates || !candidates.length) return null;
+      if (candidates.length === 1) return candidates[0];
+
+      let best = null, bestScore = -Infinity;
+      for (const r of candidates) {
+        const oe = r.outputs.find(o => o.item === item);
+        if (!oe) continue;
+        const seen = new Set([item]);
+        const newFloors = r.inputs.reduce((s, i) => s + transitiveNew(i.item, seen), 0);
+        const score = -newFloors * 1e6 + oe.rate;
+        if (score > bestScore) { bestScore = score; best = r; }
+      }
+      return best;
+    }
+
+    for (const { item, rate } of desiredOutputs) {
+      rates[item] = (rates[item] || 0) + rate;
+    }
+
+    const stack = desiredOutputs.map(d => d.item).filter(i => !imp.has(i));
+    const visited = new Set();
+
+    while (stack.length) {
+      const item = stack.pop();
+      if (visited.has(item) || imp.has(item)) continue;
+      visited.add(item);
+      const r = chooseBestRecipe(item);
+      if (!r) {
+        if (emitWarnings) warn(`Your factory needs "${item}". Add it as an import, add a recipe for it, or choose an alt recipe to eliminate the need for it.`, item);
+        continue;
+      }
+      chosenRecipes[item] = r;
       const oe = r.outputs.find(o => o.item === item);
       if (!oe) continue;
-      // Count total transitive new floors — not just direct inputs.
-      const seen = new Set([item]);
-      const newFloors = r.inputs.reduce((s, i) => s + transitiveNew(i.item, seen), 0);
-      // Primary: fewer new floors. Tiebreak: higher output rate = fewer machines.
-      const score = -newFloors * 1e6 + oe.rate;
-      if (score > bestScore) { bestScore = score; best = r; }
-    }
-    return best;
-  }
-
-  // Memoised recipe choices — locked in during DFS, reused by topo-sort and floor builder.
-  const chosenRecipes = {};
-
-  for (const { item, rate } of desiredOutputs) {
-    rates[item] = (rates[item] || 0) + rate;
-  }
-
-  const stack = desiredOutputs.map(d => d.item).filter(i => !imp.has(i));
-  const visited = new Set();
-
-  while (stack.length) {
-    const item = stack.pop();
-    if (visited.has(item) || imp.has(item)) continue;
-    visited.add(item);
-    const r = chooseBestRecipe(item);
-    if (!r) {
-      warn(`Your factory needs "${item}". Add it as an import, add a recipe for it, or choose an alt recipe to eliminate the need for it.`, item);
-      continue;
-    }
-    chosenRecipes[item] = r;
-    const oe = r.outputs.find(o => o.item === item);
-    if (!oe) continue;
-    const mc = rates[item] / oe.rate;
-    for (const inp of r.inputs) {
-      if (!imp.has(inp.item)) {
-        rates[inp.item] = (rates[inp.item] || 0) + inp.rate * mc;
-        if (!visited.has(inp.item)) stack.push(inp.item);
+      const mc = rates[item] / oe.rate;
+      for (const inp of r.inputs) {
+        if (!imp.has(inp.item)) {
+          rates[inp.item] = (rates[inp.item] || 0) + inp.rate * mc;
+          if (!visited.has(inp.item)) stack.push(inp.item);
+        }
       }
     }
+
+    return { rates, chosenRecipes };
   }
+
+  // Discover every item reachable from desired outputs via *any* available recipe
+  // (not just the greedy-chosen one).  Used to pre-seed preKnown so that recipe
+  // choices don't depend on DFS traversal order — items producible via any
+  // alternative are treated as already available from the start.
+  function discoverAllReachable() {
+    const reachable = new Set();
+    const stack = desiredOutputs.map(d => d.item).filter(i => !imp.has(i));
+    while (stack.length) {
+      const item = stack.pop();
+      if (reachable.has(item) || imp.has(item)) continue;
+      reachable.add(item);
+      for (const r of (BY_OUTPUT[item] || [])) {
+        for (const inp of r.inputs) {
+          if (!reachable.has(inp.item) && !imp.has(inp.item)) stack.push(inp.item);
+        }
+      }
+    }
+    return reachable;
+  }
+
+  const { rates, chosenRecipes } = runDFS(discoverAllReachable(), true);
 
   // Catch any items in rates that were never resolved (should be rare).
   for (const item of Object.keys(rates)) {
@@ -195,24 +220,46 @@ function planFactory({
     for (const i of cycled) sorted.push(i);
   }
 
+  // Recompute rates top-down in reverse-topo order so that desired-output items
+  // processed early by the DFS (before all consumers were known) don't produce
+  // under-counted ingredient rates.  Each item's finalRates entry = desired rate
+  // (if any) + sum of demand from every floor above it, computed consistently.
+  const finalRates = {};
+  for (const { item, rate } of desiredOutputs) {
+    finalRates[item] = (finalRates[item] || 0) + rate;
+  }
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const item = sorted[i];
+    if (!(item in finalRates)) continue;
+    const r = chosenRecipes[item];
+    const oe = r.outputs.find(o => o.item === item);
+    const mc = finalRates[item] / oe.rate;
+    for (const inp of r.inputs) {
+      if (!imp.has(inp.item) && chosenRecipes[inp.item]) {
+        finalRates[inp.item] = (finalRates[inp.item] || 0) + inp.rate * mc;
+      }
+    }
+  }
+
   const desiredSet = new Set(desiredOutputs.map(d => d.item));
   const floors = sorted.map((item, idx) => {
     const r = chosenRecipes[item];
     const oe = r.outputs.find(o => o.item === item);
-    const mc = rates[item] / oe.rate;
+    const itemRate = finalRates[item] ?? rates[item];
+    const mc = itemRate / oe.rate;
     return {
       num: idx + 1,
       product: item,
       recipe: r,
       machineCount: mc,
-      outputRate: rates[item],
+      outputRate: itemRate,
       isDesired: desiredSet.has(item),
       inputs: r.inputs.map(i => ({ item: i.item, rate: i.rate * mc, imported: imp.has(i.item) })),
       byproducts: r.outputs.filter(o => o.item !== item).map(o => ({ item: o.item, rate: o.rate * mc })),
     };
   });
 
-  return { floors, warnings, rates };
+  return { floors, warnings, rates: finalRates };
 }
 
 function fmtRate(n) {

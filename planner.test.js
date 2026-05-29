@@ -213,6 +213,61 @@ test('best-recipe heuristic tiebreak: without context, prefers higher output rat
   assertEqual(rip.recipe.name, 'Stitched Iron Plate', 'higher output rate wins tiebreak');
 });
 
+test('adding an intermediate as an explicit output does not change recipe choices', () => {
+  // Reinforced Iron Plate is needed by both Cable (indirectly, no) — use a setup
+  // where Wire is an intermediate for Cable, and also happens to feed Stitched Iron Plate.
+  // Whether or not Wire is listed as a desired output, the recipe choices should be identical.
+  const recipes = pick(
+    'Cable', 'Wire', 'Copper Ingot',
+    'Reinforced Iron Plate', 'Stitched Iron Plate',
+    'Iron Plate', 'Iron Ingot', 'Iron Rod', 'Screws'
+  );
+  const baseOutputs = [
+    { item: 'Cable', rate: 30 },
+    { item: 'Reinforced Iron Plate', rate: 5 },
+  ];
+  const withWireOutput = [
+    ...baseOutputs,
+    { item: 'Wire', rate: 10 },
+  ];
+  const { floors: floorsWithout } = planFactory({ availableRecipes: recipes, imports: ['Copper Ore', 'Iron Ore'], outputs: baseOutputs });
+  const { floors: floorsWith }    = planFactory({ availableRecipes: recipes, imports: ['Copper Ore', 'Iron Ore'], outputs: withWireOutput });
+
+  const recipeWithout = floorsWithout.find(f => f.product === 'Reinforced Iron Plate')?.recipe.name;
+  const recipeWith    = floorsWith.find(f => f.product === 'Reinforced Iron Plate')?.recipe.name;
+  assertEqual(recipeWith, recipeWithout, 'recipe choice for RIP should be the same regardless of whether Wire is an explicit output');
+});
+
+test('outputRate for intermediate floors matches actual demand from consumers', () => {
+  // Wire is an intermediate for Cable AND listed as a desired output.
+  // If DFS processes Wire before Cable has added its Wire demand, Wire's outputRate
+  // would be under-counted while Cable's inputs would show the correct (higher) rate.
+  // After the fix, both must agree.
+  const { floors } = planFactory({
+    availableRecipes: pick('Cable', 'Wire', 'Copper Ingot'),
+    imports: ['Copper Ore'],
+    outputs: [
+      { item: 'Cable', rate: 60 },  // needs 120/min Wire
+      { item: 'Wire',  rate: 30 },  // additional 30/min direct demand
+    ],
+  });
+  const wire  = floors.find(f => f.product === 'Wire');
+  const cable = floors.find(f => f.product === 'Cable');
+  assert(wire && cable, 'Wire and Cable floors must exist');
+
+  // Cable needs 2×Wire per output: 60/min Cable → 120/min Wire consumed by Cable.
+  // Plus 30/min direct Wire output = 150/min total Wire rate.
+  assertEqual(wire.outputRate, 150, 'Wire outputRate should be 150/min (120 for Cable + 30 direct)');
+
+  // Cable's Wire input must equal Wire's outputRate minus the direct Wire demand.
+  const cableWireInput = cable.inputs.find(i => i.item === 'Wire');
+  assert(cableWireInput, 'Cable floor must list Wire as an input');
+  assertEqual(cableWireInput.rate, 120, "Cable's Wire input rate should be 120/min");
+
+  // The producing floor's outputRate must cover the consumer's demand.
+  assert(wire.outputRate >= cableWireInput.rate, 'Wire outputRate must cover Cable demand');
+});
+
 // ── summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
