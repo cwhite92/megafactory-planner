@@ -14,10 +14,10 @@
 //              (imported or already needed by something else) — minimises new floors
 //   Tiebreak:  higher primary output rate → fewer machines for the same throughput
 //
-// Two-pass optimisation: the planner runs the DFS twice.  Pass 1 discovers every
-// item the factory will produce.  Pass 2 re-runs with that full item set treated as
-// "already available", so recipe choices are not biased by DFS traversal order —
-// items produced as intermediates get the same treatment as declared outputs.
+// Two-pass optimisation: Pass 1 runs with empty preKnown so alt-recipe inputs are
+// never artificially treated as free — base recipes win when they require fewer new
+// floors.  Pass 2 re-runs seeded with items actually chosen in pass 1, removing
+// traversal-order bias without inflating alt-recipe scores.
 //
 // Cycle-safety: BY_OUTPUT is keyed by PRIMARY output only — byproducts are never
 // indexed, preventing false cycles (e.g. Aluminum Scrap emits Water as byproduct;
@@ -125,27 +125,14 @@ function planFactory({
     return { rates, chosenRecipes };
   }
 
-  // Discover every item reachable from desired outputs via *any* available recipe
-  // (not just the greedy-chosen one).  Used to pre-seed preKnown so that recipe
-  // choices don't depend on DFS traversal order — items producible via any
-  // alternative are treated as already available from the start.
-  function discoverAllReachable() {
-    const reachable = new Set();
-    const stack = desiredOutputs.map(d => d.item).filter(i => !imp.has(i));
-    while (stack.length) {
-      const item = stack.pop();
-      if (reachable.has(item) || imp.has(item)) continue;
-      reachable.add(item);
-      for (const r of (BY_OUTPUT[item] || [])) {
-        for (const inp of r.inputs) {
-          if (!reachable.has(inp.item) && !imp.has(inp.item)) stack.push(inp.item);
-        }
-      }
-    }
-    return reachable;
-  }
-
-  const { rates, chosenRecipes } = runDFS(discoverAllReachable(), true);
+  // Two-pass recipe selection:
+  // Pass 1 runs with no pre-seeding so alt-recipe inputs are never treated as
+  // "free" — a recipe whose inputs require long production chains will correctly
+  // score worse than a base recipe with simpler inputs.
+  // Pass 2 re-runs with the items actually produced in pass 1 as preKnown,
+  // removing traversal-order bias without inflating alt-recipe scores.
+  const { chosenRecipes: pass1Recipes } = runDFS(new Set(), false);
+  const { rates, chosenRecipes } = runDFS(new Set(Object.keys(pass1Recipes)), true);
 
   // Catch any items in rates that were never resolved (should be rare).
   for (const item of Object.keys(rates)) {

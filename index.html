@@ -80,6 +80,7 @@ th:last-child{text-align:right}
 td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,.015)}
+tr.floor-selected td{background:rgba(255,255,255,.04)!important;outline:1px solid rgba(255,255,255,.08);outline-offset:-1px}
 .col-floor{white-space:nowrap}
 .floor-num{font-weight:700;font-size:13px;color:var(--muted2)}
 .floor-intake .floor-num{color:var(--green);font-size:12px}
@@ -490,6 +491,7 @@ function toggleAllAlts() {
 }
 
 // ── FLOW GRAPH ────────────────────────────────────────────────────────────────
+let _graphAbort = null;
 
 function buildGraphLayout(floors) {
   const producedBy = {};
@@ -540,7 +542,7 @@ function buildGraphLayout(floors) {
     let l = 0;
     for (;;) {
       if (!slots[l]) slots[l] = [];
-      if (!slots[l].some(r => r.lo <= g.maxConsumer && r.hi >= g.source)) {
+      if (!slots[l].some(r => r.lo < g.maxConsumer && r.hi > g.source)) {
         slots[l].push({ lo: g.source, hi: g.maxConsumer });
         g.lane = l;
         break;
@@ -576,9 +578,7 @@ function renderFlowGraph(groups, numLanes, graphW) {
   const srcY  = n => rowInfo[n] ? rowInfo[n].top + rowInfo[n].h * 0.25 : null;
   const consY = n => rowInfo[n] ? rowInfo[n].top + rowInfo[n].h * 0.75 : null;
 
-  // For each floor, collect which groups connect there as a consumer or source,
-  // sorted by lane. This lets us assign a unique staggered y to each group so
-  // their horizontal ticks never overlap at the same floor row.
+  // Collect which groups share a consumer floor so we can stagger their ticks.
   const consumerGroups = {};
   const sourceGroups = {};
   for (const g of groups) {
@@ -587,11 +587,10 @@ function renderFlowGraph(groups, numLanes, graphW) {
     }
     (sourceGroups[g.source] = sourceGroups[g.source] || []).push(g);
   }
-  for (const arr of Object.values(consumerGroups)) arr.sort((a, b) => a.lane - b.lane);
+  for (const arr of Object.values(consumerGroups)) arr.sort((a, b) => b.lane - a.lane);
   for (const arr of Object.values(sourceGroups)) arr.sort((a, b) => a.lane - b.lane);
 
-  const STEP = 6; // px between adjacent staggered ticks at the same floor
-
+  const STEP = 6;
   function staggeredY(base, g, arr) {
     if (base == null) return null;
     const n = arr.length;
@@ -616,7 +615,7 @@ function renderFlowGraph(groups, numLanes, graphW) {
   };
 
   for (const g of groups) {
-    const x = PAD + g.lane * LW + LW / 2;
+    const x = PAD + (numLanes - 1 - g.lane) * LW + LW / 2;
     const col = PALETTE[g.lane % PALETTE.length];
 
     const ySrc = staggeredY(srcY(g.source), g, sourceGroups[g.source] || []);
@@ -631,6 +630,9 @@ function renderFlowGraph(groups, numLanes, graphW) {
     }
     if (!ok || !yCons.length) continue;
 
+    const grpEl = document.createElementNS(ns, 'g');
+    grpEl.dataset.floors = [g.source, ...g.consumers].join(',');
+
     // Sort all connections by y and compute each curve's start point on the trunk.
     // Trunk segments run between consecutive start-points so the line never
     // extends into a curve region.
@@ -641,7 +643,7 @@ function renderFlowGraph(groups, numLanes, graphW) {
      .map(c => ({ ...c, startY: c.fromAbove ? c.y - CR : c.y + CR }));
 
     for (let i = 0; i < allConns.length - 1; i++) {
-      svg.appendChild(mk('line', {
+      grpEl.appendChild(mk('line', {
         x1: x, y1: allConns[i].startY,
         x2: x, y2: allConns[i + 1].startY,
         stroke: col, 'stroke-width': 1.5
@@ -651,14 +653,59 @@ function renderFlowGraph(groups, numLanes, graphW) {
     const elbow = (y, fromAbove) => {
       const startY = fromAbove ? y - CR : y + CR;
       const d = `M ${x},${startY} Q ${x},${y} ${x + CR},${y} L ${graphW - 1},${y}`;
-      svg.appendChild(mk('path', { d, stroke: col, 'stroke-width': 1.5, fill: 'none' }));
+      grpEl.appendChild(mk('path', { d, stroke: col, 'stroke-width': 1.5, fill: 'none' }));
     };
 
     elbow(ySrc, true);
     for (const y of yCons) elbow(y, false);
+    svg.appendChild(grpEl);
   }
 
   wrap.appendChild(svg);
+
+  if (_graphAbort) _graphAbort.abort();
+  _graphAbort = new AbortController();
+  const { signal } = _graphAbort;
+
+  let selectedFloor = null;
+
+  const allGrps = () => svg.querySelectorAll('g[data-floors]');
+
+  const applyOpacity = (activeFloor) => {
+    for (const g of allGrps()) {
+      const floors = g.dataset.floors.split(',').map(Number);
+      g.style.opacity = (activeFloor == null || floors.includes(activeFloor)) ? '1' : '0.15';
+      g.style.transition = 'opacity 0.15s';
+    }
+  };
+
+  const clearSelection = () => {
+    selectedFloor = null;
+    applyOpacity(null);
+    for (const t of tbody.querySelectorAll('tr')) t.classList.remove('floor-selected');
+  };
+
+  for (const tr of tbody.querySelectorAll('tr')) {
+    const numEl = tr.querySelector('.floor-num');
+    if (!numEl) continue;
+    const floor = parseInt(numEl.textContent);
+    if (isNaN(floor)) continue;
+    tr.addEventListener('mouseenter', () => applyOpacity(selectedFloor ?? floor));
+    tr.addEventListener('mouseleave', () => applyOpacity(selectedFloor));
+    tr.addEventListener('click', () => {
+      if (selectedFloor === floor) {
+        clearSelection();
+      } else {
+        selectedFloor = floor;
+        applyOpacity(floor);
+        for (const t of tbody.querySelectorAll('tr')) t.classList.toggle('floor-selected', t === tr);
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && selectedFloor !== null) clearSelection();
+  }, { signal });
 }
 
 function renderFloorPlan(result) {
@@ -735,7 +782,7 @@ function renderFloorPlan(result) {
   const importedNeeded = Object.entries(importedRates).filter(([, r]) => r > 0).sort(([a], [b]) => a.localeCompare(b));
   if (importedNeeded.length) {
     const inputsHtml = importedNeeded.map(([item, rate]) =>
-      `<div class="inp"><div class="dot imported"></div>${itemIconSm(item)}<span>${esc(item)}</span><span class="inp-rate">${fmtR(rate)}/min</span></div>`
+      `<div class="inp"><div class="dot imported"></div>${itemIconSm(item)}<span>${esc(item)}</span><span class="inp-rate">${fmtR(rate)}/min${beltTag(calcBelts(rate))}</span></div>`
     ).join('');
     rows.push(`<tr class="floor-intake">
       <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">0</div></td>
