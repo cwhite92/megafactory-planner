@@ -123,6 +123,8 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .belt-btn.active{background:var(--orange);color:#000;border-color:var(--orange)}
 .belt-btn small{display:block;font-size:9px;font-weight:400}
 .belt-badge{display:inline-block;background:rgba(59,130,246,.15);color:var(--blue);border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700;letter-spacing:.2px;white-space:nowrap;margin-left:5px}
+.item-icon{width:20px;height:20px;vertical-align:middle;flex-shrink:0;object-fit:contain;margin-right:4px}
+.item-icon-sm{width:16px;height:16px;vertical-align:middle;flex-shrink:0;object-fit:contain}
 </style>
 </head>
 <body>
@@ -642,7 +644,7 @@ function renderFloorPlan(result) {
       ? `<div class="byproduct">+ ${f.byproducts.map(b => `${esc(b.item)} ${fmtR(b.rate)}/min`).join(', ')} (byproduct)</div>`
       : '';
     const inpHtml = f.inputs.map(i =>
-      `<div class="inp"><div class="dot ${i.imported ? 'imported' : 'bus'}"></div><span>${esc(i.item)}</span><span class="inp-rate">${fmtR(i.rate)}/min${beltTag(calcBelts(i.rate))}</span></div>`
+      `<div class="inp"><div class="dot ${i.imported ? 'imported' : 'bus'}"></div>${itemIconSm(i.item)}<span>${esc(i.item)}</span><span class="inp-rate">${fmtR(i.rate)}/min${beltTag(calcBelts(i.rate))}</span></div>`
     ).join('');
     const clockPct = S.overclocks[f.product] || 100;
     const adjustedMC = f.machineCount * 100 / clockPct;
@@ -653,12 +655,12 @@ function renderFloorPlan(result) {
     rows.push(`<tr class="${f.isDesired ? 'floor-output' : ''}">
       <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">${f.num}</div></td>
       <td>
-        <div class="prod-name">${esc(f.product)}</div>
+        <div class="prod-name">${itemIcon(f.product)}${esc(f.product)}</div>
         <div class="prod-rate">${fmtR(f.outputRate)}/min${beltTag(calcBelts(f.outputRate))}${byHtml}</div>
       </td>
       <td>
         <div class="recipe-cell">${esc(f.recipe.name)}${f.recipe.isAlt ? '<span class="alt-badge">Alt</span>' : ''}</div>
-        <div class="machine-cell">${esc(f.recipe.machine)}</div>
+        <div class="machine-cell">${machineIcon(f.recipe.machine)}${esc(f.recipe.machine)}</div>
       </td>
       <td><div class="inputs">${inpHtml || '<span style="color:var(--muted2);font-size:12px">No inputs</span>'}</div></td>
       <td>
@@ -684,7 +686,7 @@ function renderFloorPlan(result) {
   const importedNeeded = Object.entries(importedRates).filter(([, r]) => r > 0).sort(([a], [b]) => a.localeCompare(b));
   if (importedNeeded.length) {
     const inputsHtml = importedNeeded.map(([item, rate]) =>
-      `<div class="inp"><div class="dot imported"></div><span>${esc(item)}</span><span class="inp-rate">${fmtR(rate)}/min</span></div>`
+      `<div class="inp"><div class="dot imported"></div>${itemIconSm(item)}<span>${esc(item)}</span><span class="inp-rate">${fmtR(rate)}/min</span></div>`
     ).join('');
     rows.push(`<tr class="floor-intake">
       <td class="col-floor" style="padding-left:${floorPad}px"><div class="floor-num">0</div></td>
@@ -703,6 +705,11 @@ function renderFloorPlan(result) {
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+function iconSlug(name) { return name.toLowerCase().replace(/ /g, '_'); }
+function itemIcon(name) { return `<img class="item-icon" src="icons/items/${iconSlug(name)}.png" onerror="this.style.display='none'" alt="">`; }
+function itemIconSm(name) { return `<img class="item-icon-sm" src="icons/items/${iconSlug(name)}.png" onerror="this.style.display='none'" alt="">`; }
+function machineIcon(name) { return `<img class="item-icon" src="icons/buildings/${iconSlug(name)}.png" onerror="this.style.display='none'" alt="">`; }
 
 // ── ACTIONS ───────────────────────────────────────────────────────────────────
 function markError(el) {
