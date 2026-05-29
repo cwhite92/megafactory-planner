@@ -495,34 +495,41 @@ function buildGraphLayout(floors) {
   const producedBy = {};
   for (const f of floors) producedBy[f.product] = f;
 
-  // Group all consumers by their source floor
-  const groupMap = new Map(); // source floor num -> Set of consumer floor nums
+  const rawGroups = []; // { source: floorNum, consumers: Set }
 
-  // Floor 0 supplies all imported inputs
+  // Floor 0: one group per imported item so each item gets its own lane
+  const importConsumers = {};
   for (const f of floors) {
-    if (f.inputs.some(i => i.imported)) {
-      if (!groupMap.has(0)) groupMap.set(0, new Set());
-      groupMap.get(0).add(f.num);
+    for (const inp of f.inputs) {
+      if (inp.imported) {
+        if (!importConsumers[inp.item]) importConsumers[inp.item] = new Set();
+        importConsumers[inp.item].add(f.num);
+      }
     }
   }
+  for (const consumers of Object.values(importConsumers)) {
+    rawGroups.push({ source: 0, consumers });
+  }
 
-  // Production floor connections
+  // Production floors: one group per source floor (each produces one item)
+  const prodMap = new Map();
   for (const f of floors) {
     for (const inp of f.inputs) {
       if (!inp.imported && producedBy[inp.item]) {
         const src = producedBy[inp.item].num;
-        if (!groupMap.has(src)) groupMap.set(src, new Set());
-        groupMap.get(src).add(f.num);
+        if (!prodMap.has(src)) prodMap.set(src, new Set());
+        prodMap.get(src).add(f.num);
       }
     }
   }
+  for (const [src, consumers] of prodMap) rawGroups.push({ source: src, consumers });
 
-  if (!groupMap.size) return { groups: [], numLanes: 0 };
+  if (!rawGroups.length) return { groups: [], numLanes: 0 };
 
   const groups = [];
-  for (const [src, consSet] of groupMap) {
-    const consumers = [...consSet].sort((a, b) => a - b);
-    groups.push({ source: src, consumers, maxConsumer: consumers[consumers.length - 1] });
+  for (const { source, consumers } of rawGroups) {
+    const consArr = [...consumers].sort((a, b) => a - b);
+    groups.push({ source, consumers: consArr, maxConsumer: consArr[consArr.length - 1] });
   }
 
   // Longer spans → outer (lower-numbered) lanes
