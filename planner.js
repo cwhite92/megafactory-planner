@@ -220,6 +220,40 @@ function planFactory({
     for (const i of cycled) sorted.push(i);
   }
 
+  // ALAP re-ordering: place each item as late as possible (just before its
+  // earliest consumer) to minimise conveyor-bus travel distance.
+  // Reverse Kahn's: start from sinks (items nothing internally depends on),
+  // build a reversed topo list, then flip it.  Items in cycles never reach
+  // outDeg 0 and are appended at the end unchanged.
+  {
+    const outDeg = {};
+    for (const i of sorted) outDeg[i] = 0;
+    for (const item of sorted) {
+      for (const inp of chosenRecipes[item].inputs) {
+        if (inp.item !== item && Object.prototype.hasOwnProperty.call(outDeg, inp.item)) {
+          outDeg[inp.item]++;
+        }
+      }
+    }
+    const q = sorted.filter(i => outDeg[i] === 0).sort();
+    const rev = [];
+    while (q.length) {
+      q.sort();
+      const item = q.shift();
+      rev.push(item);
+      for (const inp of chosenRecipes[item].inputs) {
+        if (inp.item !== item && Object.prototype.hasOwnProperty.call(outDeg, inp.item)) {
+          if (--outDeg[inp.item] === 0) q.push(inp.item);
+        }
+      }
+    }
+    rev.reverse();
+    const placed = new Set(rev);
+    for (const item of sorted) { if (!placed.has(item)) rev.push(item); }
+    sorted.length = 0;
+    for (const item of rev) sorted.push(item);
+  }
+
   // Recompute rates top-down in reverse-topo order so that desired-output items
   // processed early by the DFS (before all consumers were known) don't produce
   // under-counted ingredient rates.  Each item's finalRates entry = desired rate
